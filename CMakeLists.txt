@@ -4,11 +4,9 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   set(LIBARG_TESTING_DEFAULT ON)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 else()
-  message(STATUS "Subdir")
+  message(STATUS "Libargs: Subdir")
   set(LIBARG_TESTING_DEFAULT OFF)
 endif()
-message(STATUS "${CMAKE_CURRENT_SOURCE_DIR}")
-message(STATUS "${CMAKE_SOURCE_DIR}")
 
 
 set(LIBARGS_TESTING ${LIBARG_TESTING_DEFAULT} CACHE BOOL "Compile and/or run self-tests")
@@ -23,8 +21,14 @@ if (LIBARGS_TESTING)
 endif()
 
 add_library(args STATIC
-  src/argparser.cpp
-  include/args/argparser.hpp
+  src/actions.cpp
+  src/parser.cpp
+  src/printer.cpp
+  src/translator.cpp
+  include/args/actions.hpp
+  include/args/parser.hpp
+  include/args/printer.hpp
+  include/args/translator.hpp
   )
 target_include_directories(args
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include

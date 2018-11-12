@@ -1,0 +1,40 @@
+language: cpp
+
+os: linux
+dist: trusty
+sudo: required
+
+addons:
+  apt:
+    sources: [ ubuntu-toolchain-r-test ]
+    packages: [ gcc-8, g++-8, curl ]
+
+install:
+  # setup g++ 8
+  - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 90
+  - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 90
+  - sudo update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-8 90
+  # install cmake
+  - CMAKE_VERSION="3.12"
+  - CMAKE_FULL="${CMAKE_VERSION}.0"
+  - pushd ~
+  - curl "https://cmake.org/files/v${CMAKE_VERSION}/cmake-${CMAKE_FULL}-Linux-x86_64.tar.gz" -o "cmake-${CMAKE_FULL}-Linux-x86_64.tar.gz"
+  - tar xf "cmake-${CMAKE_FULL}-Linux-x86_64.tar.gz"
+  - export PATH="${PWD}/cmake-${CMAKE_FULL}-Linux-x86_64/bin:${PATH}"
+  - popd
+  # verify installed versions
+  - which cmake
+  - cmake --version
+  - which g++
+  - g++ --version
+  - which gcov
+  - gcov --version
+  - which curl
+  - curl --version
+
+script:
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DCOVERALLS=ON ..
+  - make -j`nproc`
+  - make coveralls

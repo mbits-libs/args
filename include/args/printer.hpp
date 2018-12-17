@@ -10,7 +10,7 @@
 namespace args {
 	namespace detail {
 		bool is_terminal(FILE* out) noexcept;
-		int terminal_width(FILE* out) noexcept;
+		size_t terminal_width(FILE* out) noexcept;
 
 		template <typename It>
 		inline It split(It cur, It end, size_t width) noexcept
@@ -18,7 +18,7 @@ namespace args {
 			if (size_t(end - cur) <= width)
 				return end;
 
-			auto c_end = cur + width;
+			auto c_end = cur + static_cast<ptrdiff_t>(width);
 			auto it = cur;
 			while (true) {
 				auto prev = it;
@@ -82,7 +82,7 @@ namespace args {
 			auto end = text.end();
 			auto chunk = detail::split(cur, end, width);
 
-			output::print(&*cur, chunk - cur);
+			output::print(&*cur, static_cast<size_t>(chunk - cur));
 			output::putc('\n');
 
 			cur = detail::skip_ws(chunk, end);
@@ -90,12 +90,12 @@ namespace args {
 				return;
 
 			std::string pre(indent, ' ');
-			width -= (int)indent;
+			width -= indent;
 
 			while (cur != end) {
 				chunk = detail::split(cur, end, width);
 				output::print(pre.c_str(), pre.length());
-				output::print(&*cur, chunk - cur);
+				output::print(&*cur, static_cast<size_t>(chunk - cur));
 				output::putc('\n');
 				cur = detail::skip_ws(chunk, end);
 			}

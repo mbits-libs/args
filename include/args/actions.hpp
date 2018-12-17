@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 
@@ -146,6 +147,7 @@ namespace args {
 			explicit store_action(T* dst, Names&&... names) : action_base(std::forward<Names>(names)...), ptr(dst) {}
 
 			bool needs_arg() const override { return true; }
+			using action::visit;
 			void visit(parser&, const std::string& arg) override
 			{
 				*ptr = arg;
@@ -165,6 +167,7 @@ namespace args {
 			}
 
 			bool needs_arg() const override { return true; }
+			using action::visit;
 			void visit(parser&, const std::string& arg) override
 			{
 				ptr->push_back(arg);
@@ -180,6 +183,7 @@ namespace args {
 			explicit set_value(T* dst, Names&&... names) : action_base(std::forward<Names>(names)...), ptr(dst) {}
 
 			bool needs_arg() const override { return false; }
+			using action::visit;
 			void visit(parser&) override
 			{
 				*ptr = Value::value;
@@ -239,6 +243,7 @@ namespace args {
 			explicit custom_action(Callable cb, Names&&... names) : action_base(std::forward<Names>(names)...), cb(std::move(cb)) {}
 
 			bool needs_arg() const override { return false; }
+			using action::visit;
 			void visit(parser& p) override
 			{
 				cb(p);
@@ -254,6 +259,7 @@ namespace args {
 			explicit custom_action(Callable cb, Names&&... names) : action_base(std::forward<Names>(names)...), cb(std::move(cb)) {}
 
 			bool needs_arg() const override { return true; }
+			using action::visit;
 			void visit(parser& p, const std::string& s) override
 			{
 				cb(p, s);

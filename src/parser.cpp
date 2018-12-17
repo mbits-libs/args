@@ -13,12 +13,12 @@ std::string args::parser::program_name(const char* arg0) noexcept
 	static constexpr char DIRSEP = '/';
 #endif
 
-	auto program = std::strrchr(arg0, DIRSEP);
+	const auto* program = std::strrchr(arg0, DIRSEP);
 	if (program) ++program;
 	else program = arg0;
 
 #ifdef _WIN32
-	auto ext = std::strrchr(program, '.');
+	const auto* ext = std::strrchr(program, '.');
 	if (ext && ext != program)
 		return { program, ext };
 #endif
@@ -66,7 +66,7 @@ static args::chunk& make_title(args::chunk& part, std::string title, size_t coun
 args::fmt_list args::parser::printer_arguments() const {
 	auto[positionals, arguments] = count_args();
 	fmt_list info([](auto positionals, auto arguments) {
-		auto count = 0;
+		auto count = size_t{};
 		if (positionals)
 			++count;
 		if (arguments)
@@ -92,12 +92,12 @@ args::fmt_list args::parser::printer_arguments() const {
 	return info;
 }
 
-void args::parser::short_help(FILE* out, bool for_error, std::optional<size_t> maybe_width)
+void args::parser::short_help(FILE* out, [[maybe_unused]] bool for_error, std::optional<size_t> maybe_width)
 {
 	auto shrt{ _(lng::usage) };
 	printer_append_usage(shrt);
 
-	printer{ out }.format_paragraph(shrt, 7);
+	printer{ out }.format_paragraph(shrt, 7, maybe_width);
 }
 
 void args::parser::help(std::optional<size_t> maybe_width)

@@ -37,7 +37,10 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	size_t test = atoi(argv[1]);
+	auto const int_test = atoi(argv[1]);
+	if (int_test < 0)
+		return 100;
+	auto const test = static_cast<size_t>(int_test);
 	return g_tests[test].callback();
 }
 
@@ -51,8 +54,9 @@ int every_test_ever(Mod mod, CString ... args) {
 	std::vector<std::string> multi_req;
 	std::string positional;
 
-	char* __args[] = { ((char*)"args-help-test"), ((char*)args)..., nullptr };
-	int argc = (int)std::size(__args) - 1;
+	char arg0[] = "args-help-test";
+	char* __args[] = { arg0, (const_cast<char*>(args))..., nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
 	::args::null_translator tr;
 	::args::parser p{ "program description", argc, __args, &tr };
 	p.arg(arg_opt, "o", "opt").meta("VAR").help("a help for arg_opt").opt();
@@ -129,7 +133,7 @@ TEST_FAIL(no_req) {
 }
 
 TEST_FAIL(no_req_mod) {
-	return every_test_ever(modify, noop);
+	return every_test_ever(modify);
 }
 
 // TODO: used to be test_fail; regeresion or code behind fixed?
@@ -171,10 +175,10 @@ TEST_FAIL(unknown_short) {
 }
 
 TEST_FAIL(unknown_positional) {
-	auto arg0 = (char*)"args-help-test";
-	auto arg1 = (char*)"POSITIONAL";
+	char arg0[] = "args-help-test";
+	char arg1[] = "POSITIONAL";
 	char* __args[] = { arg0, arg1, nullptr };
-	int argc = (int)std::size(__args) - 1;
+	int argc = static_cast<int>(std::size(__args)) - 1;
 	::args::null_translator tr;
 	::args::parser p{ "program description", argc, __args, &tr };
 	p.parse();

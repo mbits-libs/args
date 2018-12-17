@@ -41,9 +41,11 @@ namespace args {
 			, prog_{ program_name(argv[0]) }
 			, tr_{ tr }
 		{
-			args_.reserve(argc - 1);
-			for (int i = 1; i < argc; ++i)
-				args_.emplace_back(argv[i]);
+			if (argc > 1) {
+				args_.reserve(static_cast<size_t>(argc) - 1);
+				for (int i = 1; i < argc; ++i)
+					args_.emplace_back(argv[i]);
+			}
 		}
 
 		template <typename T, typename... Names>

@@ -20,19 +20,19 @@ bool args::detail::is_terminal(FILE* out) noexcept {
 	return !!_isatty(_fileno(out));
 }
 
-int args::detail::terminal_width(FILE* out) noexcept {
+size_t args::detail::terminal_width(FILE* out) noexcept {
 #ifdef _WIN32
 	CONSOLE_SCREEN_BUFFER_INFO buffer = { sizeof(CONSOLE_SCREEN_BUFFER_INFO) };
 	auto handle = (HANDLE)_get_osfhandle(_fileno(out));
 	if (handle == INVALID_HANDLE_VALUE || !GetConsoleScreenBufferInfo(handle, &buffer))
 		return 0;
-	return buffer.dwSize.X;
+	return buffer.dwSize.X < 0 ? 0u : buffer.dwSize.X;
 #else
 	winsize w;
 	while (ioctl(fileno(out), TIOCGWINSZ, &w) == -1) {
 		if (errno != EINTR)
 			return 0;
 	}
-	return w.ws_col;
+	return w.ws_col < 0 ? 0u : w.ws_col;
 #endif
 }

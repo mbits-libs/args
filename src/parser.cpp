@@ -5,7 +5,7 @@
 
 #include <cstring>
 
-std::string args::parser::program_name(const char* arg0) noexcept
+std::string_view args::arglist::program_name(std::string_view arg0) noexcept
 {
 #ifdef _WIN32
 	static constexpr char DIRSEP = '\\';
@@ -13,17 +13,17 @@ std::string args::parser::program_name(const char* arg0) noexcept
 	static constexpr char DIRSEP = '/';
 #endif
 
-	const auto* program = std::strrchr(arg0, DIRSEP);
-	if (program) ++program;
-	else program = arg0;
+	auto const pos = arg0.rfind(DIRSEP);
+	if (pos != std::string_view::npos)
+		arg0 = arg0.substr(pos + 1);
 
 #ifdef _WIN32
-	const auto* ext = std::strrchr(program, '.');
-	if (ext && ext != program)
-		return { program, ext };
+	auto const ext = arg0.rfind('.');
+	if (ext != std::string_view::npos && ext > 0)
+		arg0 = arg0.substr(0, ext);
 #endif
 
-	return program;
+	return arg0;
 }
 
 std::pair<size_t, size_t> args::parser::count_args() const noexcept
@@ -145,18 +145,23 @@ static std::string s(std::string_view sv) {
 	return { sv.data(), sv.length() };
 }
 
-void args::parser::parse()
+args::arglist args::parser::parse(unknown_action on_unknown)
 {
 	auto count = args_.size();
 	for (decltype(count) i = 0; i < count; ++i) {
-		auto& arg = args_[i];
+		auto arg = args_[i];
 		if (arg.length() > 1 && arg[0] == '-') {
-			if (arg.length() > 2 && arg[1] == '-')
-				parse_long(arg.substr(2), i);
-			else
-				parse_short(arg.substr(1), i);
-		} else
-			parse_positional(arg);
+			if (arg.length() > 2 && arg[1] == '-') {
+				if (!parse_long(arg.substr(2), i, on_unknown))
+					return args_.shift(i);
+			} else {
+				if (!parse_short(arg.substr(1), i, on_unknown))
+					return args_.shift(i);
+			}
+		} else {
+			if (!parse_positional(arg, on_unknown))
+				return args_.shift(i);
+		}
 	}
 
 	for (auto& action : actions_) {
@@ -171,9 +176,11 @@ void args::parser::parse()
 			error(_(lng::requires, arg));
 		}
 	}
+
+	return {};
 }
 
-void args::parser::parse_long(const std::string_view& name, size_t& i) {
+bool args::parser::parse_long(const std::string_view& name, int& i, unknown_action on_unknown) {
 	if (provide_help_ && name == "help")
 		help();
 
@@ -191,17 +198,19 @@ void args::parser::parse_long(const std::string_view& name, size_t& i) {
 		else
 			action->visit(*this);
 
-		return;
+		return true;
 	}
 
-	error(_(lng::unrecognized, "--" + s(name)));
+	if (on_unknown == exclusive_parser)
+		error(_(lng::unrecognized, "--" + s(name)));
+	return false;
 }
 
 static inline std::string expand(char c) {
 	char buff[] = { '-', c, 0 };
 	return buff;
 }
-void args::parser::parse_short(const std::string_view& name, size_t& arg)
+bool args::parser::parse_short(const std::string_view& name, int& arg, unknown_action on_unknown)
 {
 	auto length = name.length();
 	for (decltype(length) i = 0; i < length; ++i) {
@@ -239,20 +248,27 @@ void args::parser::parse_short(const std::string_view& name, size_t& arg)
 			break;
 		}
 
-		if (!found)
-			error(_(lng::unrecognized, expand(c)));
+		if (!found) {
+			if (on_unknown == exclusive_parser)
+				error(_(lng::unrecognized, expand(c)));
+			return false;
+		}
 	}
+
+	return true;
 }
 
-void args::parser::parse_positional(const std::string_view& value)
+bool args::parser::parse_positional(const std::string_view& value, unknown_action on_unknown)
 {
 	for (auto& action : actions_) {
 		if (!action->names().empty())
 			continue;
 
 		action->visit(*this, s(value));
-		return;
+		return true;
 	}
 
-	error(_(lng::unrecognized, value));
+	if (on_unknown == exclusive_parser)
+		error(_(lng::unrecognized, value));
+	return false;
 }

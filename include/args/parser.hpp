@@ -10,10 +10,67 @@
 #include <memory>
 
 namespace args {
+	class arglist {
+		int count_{};
+		char** args_{};
+	public:
+		constexpr arglist() = default;
+		constexpr arglist(arglist const&) = default;
+		constexpr arglist& operator=(arglist const&) = default;
+		constexpr arglist(arglist&&) = default;
+		constexpr arglist& operator=(arglist&&) = default;
+
+		constexpr arglist(int argc, char* argv[])
+			: count_{ argc }, args_{ argv }
+		{}
+
+		constexpr bool empty() const noexcept { return !count_; }
+		constexpr int size() const noexcept { return count_; }
+		constexpr char* const* data() const noexcept { return args_; }
+
+		constexpr std::string_view operator[](int i) const noexcept { return args_[i]; }
+		constexpr arglist shift(int n = 1) const noexcept {
+			if (n < 0) {
+				n = -n;
+				if (n > count_)
+					n = count_;
+				return { n, args_ };
+			}
+			if (n >= count_)
+				n = count_;
+			return { count_ - n, args_ + n };
+		}
+
+		static std::string_view program_name(std::string_view arg0) noexcept;
+	};
+
+	struct args_view {
+		std::string_view progname{};
+		arglist args{};
+	};
+
+	inline args_view from_main(arglist const& args) noexcept {
+		if (args.empty())
+			return {};
+		auto const progname = arglist::program_name(args[0]);
+		return { progname, args.shift() };
+	}
+
+	inline args_view from_main(int argc, char* argv[]) noexcept {
+		return from_main({ argc, argv });
+	}
+
 	class parser {
+	public:
+		enum unknown_action {
+			exclusive_parser = 0,
+			allow_subcommands = 1
+		};
+
+	private:
 		std::vector<std::unique_ptr<actions::action>> actions_;
 		std::string description_;
-		std::vector<std::string_view> args_;
+		arglist args_;
 		std::string prog_;
 		std::string usage_;
 		bool provide_help_ = true;
@@ -22,12 +79,11 @@ namespace args {
 			return (*tr_)(id, arg1, arg2);
 		}
 
-		static std::string program_name(const char* arg0) noexcept;
 		std::pair<size_t, size_t> count_args() const noexcept;
 
-		void parse_long(const std::string_view& name, size_t& i);
-		void parse_short(const std::string_view& name, size_t& i);
-		void parse_positional(const std::string_view& value);
+		bool parse_long(const std::string_view& name, int& i, unknown_action on_unknown);
+		bool parse_short(const std::string_view& name, int& i, unknown_action on_unknown);
+		bool parse_positional(const std::string_view& value, unknown_action on_unknown);
 
 		template <typename T, typename... Args>
 		actions::builder add(Args&&... args)
@@ -35,18 +91,23 @@ namespace args {
 			actions_.push_back(std::make_unique<T>(std::forward<Args>(args)...));
 			return actions_.back().get();
 		}
+
 	public:
-		parser(const std::string& description, int argc, char* argv[], const base_translator* tr)
-			: description_{ description }
-			, prog_{ program_name(argv[0]) }
+		parser(std::string description, args_view const& args, const base_translator* tr)
+			: description_{ std::move(description) }
+			, args_{ args.args }
+			, prog_{ args.progname }
 			, tr_{ tr }
 		{
-			if (argc > 1) {
-				args_.reserve(static_cast<size_t>(argc) - 1);
-				for (int i = 1; i < argc; ++i)
-					args_.emplace_back(argv[i]);
-			}
 		}
+
+		parser(std::string description, std::string_view progname, arglist const& args, const base_translator* tr)
+			: parser(std::move(description), { progname, args }, tr)
+		{}
+
+		parser(std::string description, arglist const& args, const base_translator* tr)
+			: parser(std::move(description), from_main(args), tr)
+		{}
 
 		template <typename T, typename... Names>
 		actions::builder arg(T& dst, Names&&... names) {
@@ -77,9 +138,9 @@ namespace args {
 		void provide_help(bool value = true) { provide_help_ = value; }
 		bool provide_help() { return provide_help_; }
 
-		const std::vector<std::string_view>& args() const { return args_; }
+		arglist const& args() const { return args_; }
 
-		void parse();
+		arglist parse(unknown_action on_unknown = exclusive_parser);
 
 		void printer_append_usage(std::string& out) const;
 		fmt_list printer_arguments() const;

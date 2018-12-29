@@ -83,6 +83,7 @@ std::string args::actions::action::help_name(const base_translator& _) const
 	std::string nmz;
 	nmz.reserve(length);
 
+	first = true;
 	for (auto& name : names()) {
 		if (first) first = false;
 		else nmz.append(", ");

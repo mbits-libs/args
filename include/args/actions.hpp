@@ -199,7 +199,7 @@ namespace args {
 				custom_adapter_impl(Callable cb) : cb(std::move(cb))
 				{
 				}
-				void operator()(parser& p, Args&&... args)
+				void operator()(parser& p, Args... args)
 				{
 					cb(p, std::forward<Args>(args)...);
 				}
@@ -213,7 +213,7 @@ namespace args {
 				custom_adapter_impl(Callable cb) : cb(std::move(cb))
 				{
 				}
-				void operator()(parser&, Args&&... args)
+				void operator()(parser&, Args... args)
 				{
 					cb(std::forward<Args>(args)...);
 				}
@@ -253,7 +253,7 @@ namespace args {
 
 		template <typename Callable>
 		class custom_action<Callable, std::enable_if_t<detail::is_compatible_with_v<Callable, const std::string&>>> : public action_base {
-			detail::custom_adapter<Callable> cb;
+			detail::custom_adapter<Callable, const std::string&> cb;
 		public:
 			template <typename... Names>
 			explicit custom_action(Callable cb, Names&&... names) : action_base(std::forward<Names>(names)...), cb(std::move(cb)) {}

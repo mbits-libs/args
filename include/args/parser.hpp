@@ -132,7 +132,7 @@ namespace args {
 		void program(const std::string& value);
 		const std::string& program();
 
-		void usage(const std::string& value);
+		void usage(std::string_view value);
 		const std::string& usage();
 
 		void provide_help(bool value = true) { provide_help_ = value; }

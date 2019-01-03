@@ -23,11 +23,11 @@ namespace args {
 			virtual void visit(parser&) = 0;
 			virtual void visit(parser&, const std::string& /*arg*/) = 0;
 			virtual bool visited() const = 0;
-			virtual void meta(const std::string& s) = 0;
+			virtual void meta(std::string_view s) = 0;
 			virtual std::string meta(const base_translator&) const = 0;
-			virtual void help(const std::string& s) = 0;
+			virtual void help(std::string_view s) = 0;
 			virtual const std::string& help() const = 0;
-			virtual bool is(const std::string_view& name) const = 0;
+			virtual bool is(std::string_view name) const = 0;
 			virtual bool is(char name) const = 0;
 			virtual const std::vector<std::string>& names() const = 0;
 
@@ -53,11 +53,11 @@ namespace args {
 			builder& operator=(const builder&) = delete;
 			builder& operator=(builder&&) = default;
 
-			builder& meta(const std::string& name) {
+			builder& meta(std::string_view name) {
 				ptr->meta(name);
 				return *this;
 			}
-			builder& help(const std::string& dscr) {
+			builder& help(std::string_view dscr) {
 				ptr->help(dscr);
 				return *this;
 			}
@@ -108,12 +108,12 @@ namespace args {
 			void visit(parser&) override { visited_ = true; }
 			void visit(parser&, const std::string& /*arg*/) override { visited_ = true; }
 			bool visited() const override { return visited_; }
-			void meta(const std::string& s) override { meta_ = s; }
+			void meta(std::string_view s) override { meta_ = s; }
 			std::string meta(const base_translator& _) const override;
-			void help(const std::string& s) override { help_ = s; }
+			void help(std::string_view s) override { help_ = s; }
 			const std::string& help() const override { return help_; }
 
-			bool is(const std::string_view& name) const override
+			bool is(std::string_view name) const override
 			{
 				for (auto& argname : names_) {
 					if (argname.length() > 1 && argname == name)

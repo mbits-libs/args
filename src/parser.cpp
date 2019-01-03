@@ -131,7 +131,7 @@ const std::string& args::parser::program()
 	return prog_;
 }
 
-void args::parser::usage(const std::string& value)
+void args::parser::usage(std::string_view value)
 {
 	usage_ = value;
 }

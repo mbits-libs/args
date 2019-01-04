@@ -173,7 +173,7 @@ args::arglist args::parser::parse(unknown_action on_unknown)
 				auto& name = action->names().front();
 				arg = name.length() == 1 ? "-" + name : "--" + name;
 			}
-			error(_(lng::requires, arg));
+			error(_(lng::required, arg));
 		}
 	}
 

@@ -20,7 +20,7 @@ std::string args::null_translator::operator()(
 	case lng::help_description: return "show this help message and exit";
 	case lng::unrecognized:	    return "unrecognized argument: " + s(arg1);
 	case lng::needs_param:	    return "argument " + s(arg1) + ": expected one argument";
-	case lng::requires:		    return "argument " + s(arg1) + " is required";
+	case lng::required:		    return "argument " + s(arg1) + " is required";
 	case lng::error_msg:	    return s(arg1) + ": error: " + s(arg2);
 	}
 	return "<unrecognized string>";

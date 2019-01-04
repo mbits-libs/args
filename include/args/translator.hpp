@@ -15,7 +15,7 @@ namespace args {
 		help_description,
 		unrecognized,
 		needs_param,
-		requires,
+		required,
 		error_msg
 	};
 

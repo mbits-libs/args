@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <charconv>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -11,6 +13,55 @@
 namespace args {
 	class parser;
 	struct base_translator;
+
+	namespace actions {
+		[[noreturn]] void argument_is_not_integer(parser& p, const std::string& name);
+		[[noreturn]] void argument_out_of_range(parser& p, const std::string& name);
+	}
+
+	template <typename T, typename = void> struct converter {};
+
+	template <typename T> struct string_converter {
+		static inline T value(parser&, const std::string& arg, const std::string&) {
+			return arg;
+		}
+	};
+
+	template <typename T> struct converter<T, std::enable_if_t<std::is_constructible_v<T, const std::string&>>>
+		: string_converter<T>
+	{
+	};
+
+	template <> struct converter<std::string_view> {};
+
+	template <typename T> struct from_chars_converter {
+		static inline T value(parser& p, const std::string& arg, const std::string& name) {
+			T out{};
+			auto first = arg.data();
+			auto last = first + arg.length();
+			auto const result = std::from_chars(first, last, out);
+
+			if (result.ec == std::errc::result_out_of_range)
+				actions::argument_out_of_range(p, name);
+
+			if ((result.ptr && result.ptr != last) || result.ec != std::errc{})
+				actions::argument_is_not_integer(p, name);
+
+			return out;
+		}
+	};
+
+	template <typename T> struct converter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool>>>
+		: from_chars_converter<T>
+	{
+	};
+
+	template <typename T> struct converter<std::optional<T>> {
+		static inline std::optional<T> value(parser& p, const std::string& arg, const std::string& name) {
+			using inner = converter<T>;
+			return inner::value(p, arg, name);
+		}
+	};
 
 	namespace actions {
 		struct action {
@@ -46,7 +97,9 @@ namespace args {
 			friend class ::args::parser;
 
 			action* ptr;
-			builder(action* ptr) : ptr(ptr) {}
+			builder(action* ptr, bool required) : ptr(ptr) {
+				req(required);
+			}
 		public:
 			builder(const builder&) = delete;
 			builder(builder&&) = default;
@@ -99,6 +152,8 @@ namespace args {
 			}
 
 			void visited(bool val) { visited_ = val; }
+
+			std::string argname(bool positional = false) const;
 		public:
 			void required(bool value) override { required_ = value; }
 			bool required() const override { return required_; }
@@ -148,11 +203,12 @@ namespace args {
 
 			bool needs_arg() const override { return true; }
 			using action::visit;
-			void visit(parser&, const std::string& arg) override
+			void visit(parser& p, const std::string& arg) override
 			{
-				*ptr = arg;
+				*ptr = converter<T>::value(p, arg, argname());
 				visited(true);
 			}
+
 		};
 
 		template <typename T, typename Allocator>
@@ -168,9 +224,9 @@ namespace args {
 
 			bool needs_arg() const override { return true; }
 			using action::visit;
-			void visit(parser&, const std::string& arg) override
+			void visit(parser& p, const std::string& arg) override
 			{
-				ptr->push_back(arg);
+				ptr->push_back(converter<T>::value(p, arg, argname()));
 				visited(true);
 			}
 		};

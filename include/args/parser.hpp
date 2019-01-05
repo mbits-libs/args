@@ -89,7 +89,14 @@ namespace args {
 		actions::builder add(Args&&... args)
 		{
 			actions_.push_back(std::make_unique<T>(std::forward<Args>(args)...));
-			return actions_.back().get();
+			return { actions_.back().get(), true };
+		}
+
+		template <typename T, typename... Args>
+		actions::builder add_opt(Args&&... args)
+		{
+			actions_.push_back(std::make_unique<T>(std::forward<Args>(args)...));
+			return { actions_.back().get(), false };
 		}
 
 	public:
@@ -112,6 +119,11 @@ namespace args {
 		template <typename T, typename... Names>
 		actions::builder arg(T& dst, Names&&... names) {
 			return add<actions::store_action<T>>(&dst, std::forward<Names>(names)...);
+		}
+
+		template <typename T, typename... Names>
+		actions::builder arg(std::optional<T>& dst, Names&&... names) {
+			return add_opt<actions::store_action<std::optional<T>>>(&dst, std::forward<Names>(names)...);
 		}
 
 		template <typename Value, typename T, typename... Names>
@@ -139,6 +151,8 @@ namespace args {
 		bool provide_help() { return provide_help_; }
 
 		arglist const& args() const { return args_; }
+
+		const base_translator& tr() const noexcept { return *tr_; }
 
 		arglist parse(unknown_action on_unknown = exclusive_parser);
 

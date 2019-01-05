@@ -3,6 +3,7 @@
 
 #include <args/actions.hpp>
 #include <args/translator.hpp>
+#include <args/parser.hpp>
 
 args::actions::action::~action() = default;
 args::actions::action::action() = default;
@@ -105,4 +106,22 @@ std::string args::actions::action::help_name(const base_translator& _) const
 
 std::string args::actions::action_base::meta(const base_translator& _) const {
 	return meta_.empty() ? _(lng::def_meta) : meta_;
+}
+
+std::string args::actions::action_base::argname(bool positional) const {
+	if (names().empty())
+		return {};
+	if (positional)
+		return names().front();
+	auto& name = names().front();
+	if (name.length() > 1)
+		return "--" + name;
+	return "-" + name;
+}
+
+[[noreturn]] void args::actions::argument_is_not_integer(parser& p, const std::string& name) {
+	p.error(p.tr()(lng::needs_number, name));
+}
+[[noreturn]] void args::actions::argument_out_of_range(parser& p, const std::string& name) {
+	p.error(p.tr()(lng::needed_number_exceeded, name));
 }

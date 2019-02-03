@@ -34,7 +34,7 @@ namespace args {
 				n = -n;
 				if (n > count_)
 					n = count_;
-				return { n, args_ };
+				return { count_ - n, args_ };
 			}
 			if (n >= count_)
 				n = count_;

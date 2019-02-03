@@ -27,7 +27,9 @@ namespace args {
 		}
 	};
 
-	template <typename T> struct converter<T, std::enable_if_t<std::is_constructible_v<T, const std::string&>>>
+	template <typename T> struct is_optional : std::false_type {};
+	template <typename T> struct is_optional<std::optional<T>> : std::true_type {};
+	template <typename T> struct converter<T, std::enable_if_t<std::is_constructible_v<T, const std::string&> && !is_optional<T>::value>>
 		: string_converter<T>
 	{
 	};

@@ -33,6 +33,6 @@ size_t args::detail::terminal_width(FILE* out) noexcept {
 		if (errno != EINTR)
 			return 0;
 	}
-	return w.ws_col < 0 ? 0u : w.ws_col;
+	return w.ws_col;
 #endif
 }

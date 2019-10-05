@@ -145,8 +145,9 @@ static std::string s(std::string_view sv) {
 	return { sv.data(), sv.length() };
 }
 
-args::arglist args::parser::parse(unknown_action on_unknown)
+args::arglist args::parser::parse(unknown_action on_unknown, std::optional<size_t> maybe_width)
 {
+    parse_width_ = maybe_width;
 	auto count = args_.size();
 	for (decltype(count) i = 0; i < count; ++i) {
 		auto arg = args_[i];
@@ -173,16 +174,16 @@ args::arglist args::parser::parse(unknown_action on_unknown)
 				auto& name = action->names().front();
 				arg = name.length() == 1 ? "-" + name : "--" + name;
 			}
-			error(_(lng::required, arg));
+			error(_(lng::required, arg), maybe_width);
 		}
 	}
 
 	return {};
 }
 
-bool args::parser::parse_long(const std::string_view& name, int& i, unknown_action on_unknown) {
+bool args::parser::parse_long(const std::string_view& name, unsigned& i, unknown_action on_unknown) {
 	if (provide_help_ && name == "help")
-		help();
+		help(parse_width_);
 
 	for (auto& action : actions_) {
 		if (!action->is(name))
@@ -191,7 +192,7 @@ bool args::parser::parse_long(const std::string_view& name, int& i, unknown_acti
 		if (action->needs_arg()) {
 			++i;
 			if (i >= args_.size())
-				error(_(lng::needs_param, "--" + s(name)));
+				error(_(lng::needs_param, "--" + s(name)), parse_width_);
 
 			action->visit(*this, s(args_[i]));
 		}
@@ -202,7 +203,7 @@ bool args::parser::parse_long(const std::string_view& name, int& i, unknown_acti
 	}
 
 	if (on_unknown == exclusive_parser)
-		error(_(lng::unrecognized, "--" + s(name)));
+		error(_(lng::unrecognized, "--" + s(name)), parse_width_);
 	return false;
 }
 
@@ -210,13 +211,13 @@ static inline std::string expand(char c) {
 	char buff[] = { '-', c, 0 };
 	return buff;
 }
-bool args::parser::parse_short(const std::string_view& name, int& arg, unknown_action on_unknown)
+bool args::parser::parse_short(const std::string_view& name, unsigned& arg, unknown_action on_unknown)
 {
 	auto length = name.length();
 	for (decltype(length) i = 0; i < length; ++i) {
 		auto c = name[i];
 		if (provide_help_ && c == 'h')
-			help();
+			help(parse_width_);
 
 		bool found = false;
 		for (auto& action : actions_) {
@@ -232,7 +233,7 @@ bool args::parser::parse_short(const std::string_view& name, int& arg, unknown_a
 				else {
 					++arg;
 					if (arg >= args_.size())
-						error(_(lng::needs_param, expand(c)));
+						error(_(lng::needs_param, expand(c)), parse_width_);
 
 					param = args_[arg];
 				}
@@ -250,7 +251,7 @@ bool args::parser::parse_short(const std::string_view& name, int& arg, unknown_a
 
 		if (!found) {
 			if (on_unknown == exclusive_parser)
-				error(_(lng::unrecognized, expand(c)));
+				error(_(lng::unrecognized, expand(c)), parse_width_);
 			return false;
 		}
 	}
@@ -269,6 +270,6 @@ bool args::parser::parse_positional(const std::string_view& value, unknown_actio
 	}
 
 	if (on_unknown == exclusive_parser)
-		error(_(lng::unrecognized, value));
+		error(_(lng::unrecognized, value), parse_width_);
 	return false;
 }

@@ -17,16 +17,16 @@
 #endif
 
 bool args::detail::is_terminal(FILE* out) noexcept {
-	return !!_isatty(_fileno(out));
+	return _isatty(_fileno(out)) != 0;
 }
 
 size_t args::detail::terminal_width(FILE* out) noexcept {
 #ifdef _WIN32
-	CONSOLE_SCREEN_BUFFER_INFO buffer = { sizeof(CONSOLE_SCREEN_BUFFER_INFO) };
-	auto handle = (HANDLE)_get_osfhandle(_fileno(out));
+	CONSOLE_SCREEN_BUFFER_INFO buffer = { };
+	auto handle = reinterpret_cast<HANDLE>(_get_osfhandle(_fileno(out)));
 	if (handle == INVALID_HANDLE_VALUE || !GetConsoleScreenBufferInfo(handle, &buffer))
 		return 0;
-	return buffer.dwSize.X < 0 ? 0u : buffer.dwSize.X;
+	return buffer.dwSize.X < 0 ? 0u : static_cast<size_t>(buffer.dwSize.X);
 #else
 	winsize w;
 	while (ioctl(fileno(out), TIOCGWINSZ, &w) == -1) {

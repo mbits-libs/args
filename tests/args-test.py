@@ -37,8 +37,8 @@ exe = sys.argv[1]
 
 print(colored(exe, 'grey'))
 
-def mktest(result, title):
-  return (int(result), title)
+def mktest(result, title, output):
+  return (int(result), title, output)
 
 def tests():
   p = subprocess.Popen([exe], stdout=subprocess.PIPE)
@@ -47,17 +47,20 @@ def tests():
     sys.exit(p.returncode)
 
   out = out.decode('utf-8')
-  return [mktest(*line.split(':', 1)) for line in out.split('\n') if line]
+  return [mktest(*line.split(':', 2)) for line in out.split('\n') if line]
+
+def simplify(outdata):
+  return outdata.replace('\r\n', '\\n').replace('\n', '\\n').replace('\t', '\\t')
 
 tests_failed = 0
 test_id = 0
 tests = tests()
-for result, title in tests:
+for result, title, output in tests:
   print(colored("[ RUN      ]", "green"), colored(title, "grey"))
   sys.stdout.flush()
-  p = subprocess.Popen([exe, "%s" % test_id])
+  p = subprocess.Popen([exe, "%s" % test_id], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   test_id += 1
-  p.communicate()
+  out, err = p.communicate()
   failed = p.returncode != 0
   should_fail = result != 0
   if should_fail != failed:
@@ -67,6 +70,32 @@ for result, title in tests:
     Which is: {result}
   actual
     Which is: {returncode}'''.format(result = result, returncode=p.returncode))
+    if p.returncode:
+      print(err)
+    else:
+      print(out)
+    print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
+  elif output != '' and result == 0 and output != simplify(out):
+    print('''Expected equality of these values:
+  expected
+    Which is: {output}
+  actual
+    Which is: {outdata}'''.format(output = output, outdata=simplify(out)))
+    if p.returncode:
+      print(err)
+    else:
+      print(out)
+    print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
+  elif output != '' and result != 0 and output != simplify(err):
+    print('''Expected equality of these values:
+  expected
+    Which is: {output}
+  actual
+    Which is: {outdata}'''.format(output = output, outdata=simplify(err)))
+    if p.returncode:
+        print(err)
+    else:
+        print(out)
     print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   else:
     print(colored("[       OK ]", "green"), colored(title, "grey"))

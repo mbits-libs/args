@@ -120,8 +120,8 @@ std::string args::actions::action_base::argname(bool positional) const {
 }
 
 [[noreturn]] void args::actions::argument_is_not_integer(parser& p, const std::string& name) {
-	p.error(p.tr()(lng::needs_number, name));
+	p.error(p.tr()(lng::needs_number, name), p.parse_width());
 }
 [[noreturn]] void args::actions::argument_out_of_range(parser& p, const std::string& name) {
-	p.error(p.tr()(lng::needed_number_exceeded, name));
+	p.error(p.tr()(lng::needed_number_exceeded, name), p.parse_width());
 }

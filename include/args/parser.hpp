@@ -11,7 +11,7 @@
 
 namespace args {
 	class arglist {
-		int count_{};
+		unsigned count_{};
 		char** args_{};
 	public:
 		constexpr arglist() = default;
@@ -21,21 +21,19 @@ namespace args {
 		constexpr arglist& operator=(arglist&&) = default;
 
 		constexpr arglist(int argc, char* argv[])
+			: count_{ argc < 0 ? 0u : static_cast<unsigned>(argc) }, args_{ argv }
+		{}
+
+		constexpr arglist(unsigned argc, char* argv[])
 			: count_{ argc }, args_{ argv }
 		{}
 
 		constexpr bool empty() const noexcept { return !count_; }
-		constexpr int size() const noexcept { return count_; }
+		constexpr unsigned size() const noexcept { return count_; }
 		constexpr char* const* data() const noexcept { return args_; }
 
-		constexpr std::string_view operator[](int i) const noexcept { return args_[i]; }
-		constexpr arglist shift(int n = 1) const noexcept {
-			if (n < 0) {
-				n = -n;
-				if (n > count_)
-					n = count_;
-				return { count_ - n, args_ };
-			}
+		constexpr std::string_view operator[](unsigned i) const noexcept { return args_[i]; }
+		constexpr arglist shift(unsigned n = 1) const noexcept {
 			if (n >= count_)
 				n = count_;
 			return { count_ - n, args_ + n };
@@ -74,15 +72,16 @@ namespace args {
 		std::string prog_;
 		std::string usage_;
 		bool provide_help_ = true;
+		std::optional<size_t> parse_width_ = {};
 		const base_translator* tr_;
-		std::string _(lng id, std::string_view arg1 = { }, std::string_view arg2 = { }) const {
+		[[nodiscard]] std::string _(lng id, std::string_view arg1 = { }, std::string_view arg2 = { }) const {
 			return (*tr_)(id, arg1, arg2);
 		}
 
-		std::pair<size_t, size_t> count_args() const noexcept;
+		[[nodiscard]] std::pair<size_t, size_t> count_args() const noexcept;
 
-		bool parse_long(const std::string_view& name, int& i, unknown_action on_unknown);
-		bool parse_short(const std::string_view& name, int& i, unknown_action on_unknown);
+		bool parse_long(const std::string_view& name, unsigned& i, unknown_action on_unknown);
+		bool parse_short(const std::string_view& name, unsigned& i, unknown_action on_unknown);
 		bool parse_positional(const std::string_view& value, unknown_action on_unknown);
 
 		template <typename T, typename... Args>
@@ -154,7 +153,10 @@ namespace args {
 
 		const base_translator& tr() const noexcept { return *tr_; }
 
-		arglist parse(unknown_action on_unknown = exclusive_parser);
+		std::optional<size_t> parse_width() const noexcept { return parse_width_; }
+
+		arglist parse(unknown_action on_unknown = exclusive_parser,
+			std::optional<size_t> maybe_width = {});
 
 		void printer_append_usage(std::string& out) const;
 		fmt_list printer_arguments() const;

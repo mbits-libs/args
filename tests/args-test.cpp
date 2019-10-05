@@ -2,10 +2,13 @@
 #include <string_view>
 #include <iostream>
 
+using namespace std::literals;
+
 struct test {
 	const char* title;
 	int(*callback)();
 	int expected{ 0 };
+	std::string_view output{ };
 };
 
 std::vector<test> g_tests;
@@ -13,26 +16,32 @@ std::vector<test> g_tests;
 template <typename Test>
 struct registrar {
 	registrar() {
-		::g_tests.push_back({ Test::get_name(), Test::run, Test::expected()}); \
+		::g_tests.push_back({ Test::get_name(), Test::run, Test::expected(), Test::output() }); \
 	}
 };
 
-#define TEST_BASE(name, EXPECTED) \
+#define TEST_BASE(name, EXPECTED, OUTPUT) \
 	struct test_ ## name { \
 		static const char* get_name() noexcept { return #name; } \
 		static int run(); \
 		static int expected() noexcept { return (EXPECTED); } \
+		static std::string_view output() noexcept { return OUTPUT; } \
 	}; \
 	registrar<test_ ## name> reg_ ## name; \
 	int test_ ## name ::run()
 
-#define TEST(name) TEST_BASE(name, 0)
-#define TEST_FAIL(name) TEST_BASE(name, 1)
+#define TEST(name) TEST_BASE(name, 0, {})
+#define TEST_FAIL(name) TEST_BASE(name, 1, {})
+#define TEST_OUT(name, OUTPUT) TEST_BASE(name, 0, OUTPUT)
+#define TEST_FAIL_OUT(name, OUTPUT) TEST_BASE(name, 1, OUTPUT)
 
 int main(int argc, char* argv[]) {
 	if (argc == 1) {
 		for (auto const& test : g_tests) {
-			printf("%d:%s\n", test.expected, test.title);
+			printf("%d:%s:", test.expected, test.title);
+			if (!test.output.empty())
+				printf("%.*s", static_cast<int>(test.output.size()), test.output.data());
+			putc('\n', stdout);
 		}
 		return 0;
 	}
@@ -58,7 +67,7 @@ int every_test_ever(Mod mod, CString ... args) {
 	char* __args[] = { arg0, (const_cast<char*>(args))..., nullptr };
 	int argc = static_cast<int>(std::size(__args)) - 1;
 	::args::null_translator tr;
-	::args::parser p{ "program description", argc, __args, &tr };
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
 	p.arg(arg_opt, "o", "opt").meta("VAR").help("a help for arg_opt").opt();
 	p.arg(arg_req, "r", "req").help("a help for arg_req");
 	p.set<std::true_type>(starts_as_false, "on", "1").help("a help for on").opt();
@@ -90,6 +99,7 @@ void EQ_impl(T&& lhs, U&& rhs, const char* lhs_name, const char* rhs_name) {
 	if (lhs == rhs)
 		return;
 	std::cerr << "Expected equality of these values:\n "
+		<< std::boolalpha
 		<< lhs_name << "\n    Which is: " << lhs << "\n "
 		<< rhs_name << "\n    Which is: " << rhs << "\n";
 	std::exit(1);
@@ -103,7 +113,7 @@ TEST(gen_usage) {
 		const std::string_view expected_help = "args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]";
 		parser.printer_append_usage(shrt);
 		EQ(expected_help, shrt);
-	}, "-r", "x", "--second", "somsink");
+		}, "-r", "x", "--second", "somsink");
 }
 
 TEST(gen_usage_no_help) {
@@ -113,14 +123,14 @@ TEST(gen_usage_no_help) {
 		parser.provide_help(false);
 		parser.printer_append_usage(shrt);
 		EQ(expected_no_help, shrt);
-	}, "-r", "x", "--second", "somsink");
+		}, "-r", "x", "--second", "somsink");
 }
 
-TEST(short_help_argument) {
+TEST_OUT(short_help_argument, R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\n\nprogram description\n\npositional arguments:\n INPUT         a help for positional\n\noptional arguments:\n -h, --help    show this help message and exit\n -o, --opt VAR a help for arg_opt\n -r, --req ARG a help for arg_req\n --on, -1      a help for on\n --off, -0     a help for off\n --first ARG   zero or more\n --second VAL  one or more\n)"sv) {
 	return every_test_ever(noop, "-h");
 }
 
-TEST(long_help_argument) {
+TEST_OUT(long_help_argument, R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\n\nprogram description\n\npositional arguments:\n INPUT         a help for positional\n\noptional arguments:\n -h, --help    show this help message and exit\n -o, --opt VAR a help for arg_opt\n -r, --req ARG a help for arg_req\n --on, -1      a help for on\n --off, -0     a help for off\n --first ARG   zero or more\n --second VAL  one or more\n)"sv) {
 	return every_test_ever(noop, "--help");
 }
 
@@ -128,7 +138,7 @@ TEST(help_mod) {
 	return every_test_ever(modify, "-h");
 }
 
-TEST_FAIL(no_req) {
+TEST_FAIL_OUT(no_req, R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: argument -r is required\n)"sv) {
 	return every_test_ever(noop);
 }
 
@@ -149,38 +159,38 @@ TEST(full) {
 		"POSITIONAL");
 }
 
-TEST_FAIL(missing_arg_short) {
+TEST_FAIL_OUT(missing_arg_short, R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: argument -r: expected one argument\n)"sv) {
 	return every_test_ever(noop, "-r");
 }
 
-TEST_FAIL(missing_arg) {
+TEST_FAIL_OUT(missing_arg, R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: argument --req: expected one argument\n)"sv) {
 	return every_test_ever(noop, "--req");
 }
 
-TEST_FAIL(missing_positional) {
+TEST_FAIL_OUT(missing_positional, R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT] POSITIONAL [POSITIONAL ...]\nargs-help-test: error: argument POSITIONAL is required\n)"sv) {
 	std::vector<std::string> one_plus;
 	return every_test_ever([&](args::parser& p) {
 		p.arg(one_plus)
-			.meta("ARG")
+			.meta("POSITIONAL")
 			.help("this parameter must be given at least once");
-	}, "-r", "x", "--second", "somsink");
+		}, "-r", "x", "--second", "somsink");
 }
 
-TEST_FAIL(unknown) {
+TEST_FAIL_OUT(unknown, R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: unrecognized argument: --flag\n)"sv) {
 	return every_test_ever(noop, "--flag");
 }
 
-TEST_FAIL(unknown_short) {
+TEST_FAIL_OUT(unknown_short, R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: unrecognized argument: -f\n)"sv) {
 	return every_test_ever(noop, "-f");
 }
 
-TEST_FAIL(unknown_positional) {
-	char arg0[] = "args-help-test";
+TEST_FAIL_OUT(unknown_positional, R"(usage: args-help-test [-h]\nargs-help-test: error: unrecognized argument: POSITIONAL\n)"sv) {
+	char arg0[] = "/usr/bin/args-help-test";
 	char arg1[] = "POSITIONAL";
 	char* __args[] = { arg0, arg1, nullptr };
 	int argc = static_cast<int>(std::size(__args)) - 1;
 	::args::null_translator tr;
-	::args::parser p{ "program description", argc, __args, &tr };
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
 	p.parse();
 	return 0;
 
@@ -190,4 +200,31 @@ TEST(console_width) {
 	const auto isatty = args::detail::is_terminal(stdout);
 	const auto width = args::detail::terminal_width(stdout);
 	return isatty ? (width ? 0 : 1) : (width ? 1 : 0);
+}
+
+TEST_OUT(width_forced, R"(usage: args-help-test [-h] [INPUT]\n\nThis is a very long description of the\nprogram, which should span multiple\nlines in narrow consoles. This will be\ntested with forcing a console width in\nthe parse() method.\n\npositional arguments:\n INPUT      This is a very long\n            description of the INPUT\n            param, which should span\n            multiple lines in narrow\n            consoles. This will be\n            tested with forcing a\n            console width in the\n            parse() method. Also,\n            here's a long word:\n            supercalifragilisticexpiali\n            docious\n\noptional arguments:\n -h, --help show this help message and\n            exit\n)"sv) {
+	std::string positional;
+
+	char arg0[] = "args-help-test";
+	char arg1[] = "-h";
+	char* __args[] = { arg0, arg1, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	auto prog_descr =
+		"This is a very long description of the program, "
+		"which should span multiple lines in narrow consoles. "
+		"This will be tested with forcing a console width in "
+		"the parse() method."s;
+	auto long_descr =
+		"This is a very long description of the INPUT param, "
+		"which should span multiple lines in narrow consoles. "
+		"This will be tested with forcing a console width in "
+		"the parse() method. Also, here's a long word: "
+		"supercalifragilisticexpialidocious"s;
+
+	::args::null_translator tr;
+	::args::parser p{ std::move(prog_descr), ::args::from_main(argc, __args), &tr };
+	p.arg(positional).meta("INPUT").help(std::move(long_descr)).opt();
+	p.parse(::args::parser::exclusive_parser, 40);
+	return 0;
 }

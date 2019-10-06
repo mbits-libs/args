@@ -344,3 +344,145 @@ TEST(subcmd_positional) {
 
 	return 0;
 }
+
+TEST(custom_simple_1) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char* __args[] = { arg0, arg1, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.custom([] {}, "path");
+	p.parse();
+
+	return 0;
+}
+
+TEST(custom_simple_1_exit) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char* __args[] = { arg0, arg1, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.custom([] { std::exit(0); }, "path");
+	p.parse();
+
+	return 1;
+}
+
+TEST(custom_simple_2) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char* __args[] = { arg0, arg1, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.custom([](::args::parser&) {}, "path");
+	p.parse();
+
+	return 0;
+}
+
+TEST(custom_simple_2_exit) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char* __args[] = { arg0, arg1, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.custom([](::args::parser&) { std::exit(0); }, "path");
+	p.parse();
+
+	return 1;
+}
+
+TEST(custom_string_1) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char arg2[] = "value";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.custom([](std::string const&) {}, "path");
+	p.parse();
+
+	return 0;
+}
+
+TEST(custom_string_1_exit) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char arg2[] = "value";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.custom([](std::string const&) { std::exit(0); }, "path");
+	p.parse();
+
+	return 1;
+}
+
+TEST(custom_string_2) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char arg2[] = "value";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.custom([](::args::parser&, std::string const&) {}, "path");
+	p.parse();
+
+	return 0;
+}
+
+TEST(custom_string_2_exit) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char arg2[] = "value";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.custom([](::args::parser&, std::string const&) { std::exit(0); }, "path");
+	p.parse();
+
+	return 1;
+}
+
+TEST(empty_args) {
+	char* __args[] = { nullptr };
+	auto const args = ::args::from_main(0, __args);
+	constexpr auto expected_prog_name = ""sv;
+	constexpr auto expected_args = 0u;
+
+	EQ(expected_prog_name, args.progname);
+	EQ(expected_args, args.args.size());
+
+	return 0;
+}
+
+TEST(additional_ctors) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char arg2[] = "value";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	args::null_translator tr;
+	args::parser p1{ ""s, arg0, {argc - 1, __args + 1}, &tr };
+	args::parser p2{ ""s, args::arglist{argc, __args}, &tr };
+
+	return 0;
+}

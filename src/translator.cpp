@@ -3,6 +3,9 @@
 
 #include <args/translator.hpp>
 
+args::base_translator::~base_translator() = default;
+args::base_translator::base_translator() = default;
+
 static std::string s(std::string_view sv) {
 	return { sv.data(), sv.length() };
 }

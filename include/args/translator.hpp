@@ -22,7 +22,12 @@ namespace args {
 	};
 
 	struct base_translator {
-		virtual ~base_translator() = default;
+		virtual ~base_translator();
+		base_translator();
+		base_translator(const base_translator&) = delete;
+		base_translator(base_translator&&) = delete;
+		base_translator& operator=(const base_translator&) = delete;
+		base_translator& operator=(base_translator&&) = delete;
 		virtual std::string operator()(lng id, std::string_view arg1 = { }, std::string_view arg2 = { }) const = 0;
 	};
 

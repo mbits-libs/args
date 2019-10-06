@@ -228,3 +228,119 @@ TEST_OUT(width_forced, R"(usage: args-help-test [-h] [INPUT]\n\nThis is a very l
 	p.parse(::args::parser::exclusive_parser, 40);
 	return 0;
 }
+
+TEST_FAIL(not_an_int) {
+	int value;
+
+	char arg0[] = "args-help-test";
+	char arg1[] = "--num";
+	char arg2[] = "value";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.arg(value, "num").meta("NUMBER").opt();
+	p.parse();
+
+	return 0;
+}
+
+TEST_FAIL(out_of_range) {
+	int value;
+
+	char arg0[] = "args-help-test";
+	char arg1[] = "--num";
+	char arg2[] = "123456789012345678901234567890123456789012345678901234567890";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.arg(value, "num").meta("NUMBER").opt();
+	p.parse();
+
+	return 0;
+}
+
+TEST(optional_int_1) {
+	std::optional<int> value;
+
+	char arg0[] = "args-help-test";
+	char arg1[] = "--num";
+	char arg2[] = "12345";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.arg(value, "num").meta("NUMBER");
+	p.parse();
+
+	constexpr auto has_value = true;
+	constexpr auto the_value = 12345;
+	EQ(has_value, !!value);
+	EQ(the_value, *value);
+
+	return 0;
+}
+
+TEST(optional_int_2) {
+	std::optional<int> value;
+
+	char arg0[] = "args-help-test";
+	char* __args[] = { arg0, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.arg(value, "num").meta("NUMBER");
+	p.parse();
+
+	constexpr auto no_value = false;
+	EQ(no_value, !!value);
+
+	return 0;
+}
+
+TEST(subcmd_long) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--num";
+	char arg2[] = "12345";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.parse(::args::parser::allow_subcommands);
+
+	return 0;
+}
+
+TEST(subcmd_short) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "-n";
+	char arg2[] = "12345";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.parse(::args::parser::allow_subcommands);
+
+	return 0;
+}
+
+TEST(subcmd_positional) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "a_path";
+	char arg2[] = "12345";
+	char* __args[] = { arg0, arg1, arg2, nullptr };
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{ "program description", ::args::from_main(argc, __args), &tr };
+	p.parse(::args::parser::allow_subcommands);
+
+	return 0;
+}

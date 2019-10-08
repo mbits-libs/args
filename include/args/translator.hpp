@@ -28,11 +28,15 @@ namespace args {
 		base_translator(base_translator&&) = delete;
 		base_translator& operator=(const base_translator&) = delete;
 		base_translator& operator=(base_translator&&) = delete;
-		virtual std::string operator()(lng id, std::string_view arg1 = { }, std::string_view arg2 = { }) const = 0;
+		virtual std::string operator()(lng id,
+		                               std::string_view arg1 = {},
+		                               std::string_view arg2 = {}) const = 0;
 	};
 
 	class null_translator : public base_translator {
 	public:
-		std::string operator()(lng id, std::string_view arg1, std::string_view arg2) const override;
+		std::string operator()(lng id,
+		                       std::string_view arg1,
+		                       std::string_view arg2) const override;
 	};
-}
+}  // namespace args

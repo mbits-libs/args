@@ -2,31 +2,28 @@
 // This code is licensed under MIT license (see LICENSE for details)
 
 #include <args/actions.hpp>
-#include <args/translator.hpp>
 #include <args/parser.hpp>
+#include <args/translator.hpp>
 
 args::actions::action::~action() = default;
 args::actions::action::action() = default;
 args::actions::action::action(action&&) = default;
 args::actions::action& args::actions::action::operator=(action&&) = default;
 
-void args::actions::action::append_short_help(const base_translator& _, std::string& s) const
-{
+void args::actions::action::append_short_help(const base_translator& _,
+                                              std::string& s) const {
 	auto aname = ([this](const base_translator& _) {
-		if (names().empty())
-			return meta(_);
+		if (names().empty()) return meta(_);
 
 		const auto& name = names().front();
 		const size_t length = name.length();
 		size_t additional = 0;
-		if (length > 1)
-			++additional;
+		if (length > 1) ++additional;
 		++additional;
 		std::string aname;
 		aname.reserve(length + additional);
 		aname.push_back('-');
-		if (length > 1)
-			aname.push_back('-');
+		if (length > 1) aname.push_back('-');
 		aname.append(name);
 
 		if (needs_arg()) {
@@ -37,9 +34,7 @@ void args::actions::action::append_short_help(const base_translator& _, std::str
 		return aname;
 	}(_));
 
-	int flags =
-		(required() ? 2 : 0) |
-		(multiple() ? 1 : 0);
+	int flags = (required() ? 2 : 0) | (multiple() ? 1 : 0);
 
 	if (flags & 2) {
 		s.push_back(' ');
@@ -59,35 +54,35 @@ void args::actions::action::append_short_help(const base_translator& _, std::str
 	}
 }
 
-std::string args::actions::action::help_name(const base_translator& _) const
-{
+std::string args::actions::action::help_name(const base_translator& _) const {
 	auto meta_value = meta(_);
 
 	size_t length = 0;
 	bool first = true;
 	for (auto& name : names()) {
-		if (first) first = false;
-		else length += 2;
+		if (first)
+			first = false;
+		else
+			length += 2;
 
 		++length;
-		if (name.length() > 1)
-			++length;
+		if (name.length() > 1) ++length;
 		length += name.length();
 	}
 
-	if (!length)
-		return meta_value;
+	if (!length) return meta_value;
 
-	if (needs_arg())
-		length += 1 + meta_value.length();
+	if (needs_arg()) length += 1 + meta_value.length();
 
 	std::string nmz;
 	nmz.reserve(length);
 
 	first = true;
 	for (auto& name : names()) {
-		if (first) first = false;
-		else nmz.append(", ");
+		if (first)
+			first = false;
+		else
+			nmz.append(", ");
 
 		if (name.length() > 1)
 			nmz.append("--");
@@ -109,19 +104,20 @@ std::string args::actions::action_base::meta(const base_translator& _) const {
 }
 
 std::string args::actions::action_base::argname(bool positional) const {
-	if (names().empty())
-		return {};
-	if (positional)
-		return names().front();
+	if (names().empty()) return {};
+	if (positional) return names().front();
 	auto& name = names().front();
-	if (name.length() > 1)
-		return "--" + name;
+	if (name.length() > 1) return "--" + name;
 	return "-" + name;
 }
 
-[[noreturn]] void args::actions::argument_is_not_integer(parser& p, const std::string& name) {
+[[noreturn]] void args::actions::argument_is_not_integer(
+    parser& p,
+    const std::string& name) {
 	p.error(p.tr()(lng::needs_number, name), p.parse_width());
 }
-[[noreturn]] void args::actions::argument_out_of_range(parser& p, const std::string& name) {
+[[noreturn]] void args::actions::argument_out_of_range(
+    parser& p,
+    const std::string& name) {
 	p.error(p.tr()(lng::needed_number_exceeded, name), p.parse_width());
 }

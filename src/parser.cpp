@@ -5,8 +5,7 @@
 
 #include <cstring>
 
-std::string_view args::arglist::program_name(std::string_view arg0) noexcept
-{
+std::string_view args::arglist::program_name(std::string_view arg0) noexcept {
 #ifdef _WIN32
 	static constexpr char DIRSEP = '\\';
 #else
@@ -14,20 +13,17 @@ std::string_view args::arglist::program_name(std::string_view arg0) noexcept
 #endif
 
 	auto const pos = arg0.rfind(DIRSEP);
-	if (pos != std::string_view::npos)
-		arg0 = arg0.substr(pos + 1);
+	if (pos != std::string_view::npos) arg0 = arg0.substr(pos + 1);
 
 #ifdef _WIN32
 	auto const ext = arg0.rfind('.');
-	if (ext != std::string_view::npos && ext > 0)
-		arg0 = arg0.substr(0, ext);
+	if (ext != std::string_view::npos && ext > 0) arg0 = arg0.substr(0, ext);
 #endif
 
 	return arg0;
 }
 
-std::pair<size_t, size_t> args::parser::count_args() const noexcept
-{
+std::pair<size_t, size_t> args::parser::count_args() const noexcept {
 	size_t positionals = 0;
 	size_t arguments = provide_help_ ? 1 : 0;
 
@@ -38,7 +34,7 @@ std::pair<size_t, size_t> args::parser::count_args() const noexcept
 			++arguments;
 	}
 
-	return { positionals, arguments };
+	return {positionals, arguments};
 }
 
 void args::parser::printer_append_usage(std::string& shrt) const {
@@ -47,30 +43,27 @@ void args::parser::printer_append_usage(std::string& shrt) const {
 	if (!usage_.empty()) {
 		shrt.push_back(' ');
 		shrt.append(usage_);
-	}
-	else {
-		if (provide_help_)
-			shrt.append(" [-h]");
+	} else {
+		if (provide_help_) shrt.append(" [-h]");
 		for (auto& action : actions_)
 			action->append_short_help(*tr_, shrt);
 	}
 }
 
-static args::chunk& make_title(args::chunk& part, std::string title, size_t count)
-{
+static args::chunk& make_title(args::chunk& part,
+                               std::string title,
+                               size_t count) {
 	part.title = std::move(title);
 	part.items.reserve(count);
 	return part;
 }
 
 args::fmt_list args::parser::printer_arguments() const {
-	auto[positionals, arguments] = count_args();
+	auto [positionals, arguments] = count_args();
 	fmt_list info([](auto positionals, auto arguments) {
 		auto count = size_t{};
-		if (positionals)
-			++count;
-		if (arguments)
-			++count;
+		if (positionals) ++count;
+		if (arguments) ++count;
 		return count;
 	}(positionals, arguments));
 
@@ -81,73 +74,71 @@ args::fmt_list args::parser::printer_arguments() const {
 	if (arguments) {
 		auto& args = make_title(info[args_id], _(lng::optionals), arguments);
 		if (provide_help_)
-			args.items.push_back(std::make_pair("-h, --help", _(lng::help_description)));
+			args.items.push_back(
+			    std::make_pair("-h, --help", _(lng::help_description)));
 	}
 
 	for (auto& action : actions_) {
-		info[action->names().empty() ? 0 : args_id].items
-			.push_back(std::make_pair(action->help_name(*tr_), action->help()));
+		info[action->names().empty() ? 0 : args_id].items.push_back(
+		    std::make_pair(action->help_name(*tr_), action->help()));
 	}
 
 	return info;
 }
 
-void args::parser::short_help(FILE* out, [[maybe_unused]] bool for_error, std::optional<size_t> maybe_width)
-{
-	auto shrt{ _(lng::usage) };
+void args::parser::short_help(FILE* out,
+                              [[maybe_unused]] bool for_error,
+                              std::optional<size_t> maybe_width) {
+	auto shrt{_(lng::usage)};
 	printer_append_usage(shrt);
 
-	printer{ out }.format_paragraph(shrt, 7, maybe_width);
+	printer{out}.format_paragraph(shrt, 7, maybe_width);
 }
 
-void args::parser::help(std::optional<size_t> maybe_width)
-{
+void args::parser::help(std::optional<size_t> maybe_width) {
 	short_help(stdout, false, maybe_width);
 
 	if (!description_.empty()) {
 		fputc('\n', stdout);
-		printer{ stdout }.format_paragraph(description_, 0, maybe_width);
+		printer{stdout}.format_paragraph(description_, 0, maybe_width);
 	}
 
-	printer{ stdout }.format_list(printer_arguments(), maybe_width);
+	printer{stdout}.format_list(printer_arguments(), maybe_width);
 
 	std::exit(0);
 }
 
-void args::parser::error(const std::string& msg, std::optional<size_t> maybe_width)
-{
+void args::parser::error(const std::string& msg,
+                         std::optional<size_t> maybe_width) {
 	short_help(stderr, true, maybe_width);
-	printer{ stderr }.format_paragraph(_(lng::error_msg, prog_, std::move(msg)), 0, maybe_width);
+	printer{stderr}.format_paragraph(_(lng::error_msg, prog_, std::move(msg)),
+	                                 0, maybe_width);
 	std::exit(2);
 }
 
-void args::parser::program(const std::string& value)
-{
+void args::parser::program(const std::string& value) {
 	prog_ = value;
 }
 
-const std::string& args::parser::program()
-{
+const std::string& args::parser::program() {
 	return prog_;
 }
 
-void args::parser::usage(std::string_view value)
-{
+void args::parser::usage(std::string_view value) {
 	usage_ = value;
 }
 
-const std::string& args::parser::usage()
-{
+const std::string& args::parser::usage() {
 	return usage_;
 }
 
 static std::string s(std::string_view sv) {
-	return { sv.data(), sv.length() };
+	return {sv.data(), sv.length()};
 }
 
-args::arglist args::parser::parse(unknown_action on_unknown, std::optional<size_t> maybe_width)
-{
-    parse_width_ = maybe_width;
+args::arglist args::parser::parse(unknown_action on_unknown,
+                                  std::optional<size_t> maybe_width) {
+	parse_width_ = maybe_width;
 	auto count = args_.size();
 	for (decltype(count) i = 0; i < count; ++i) {
 		auto arg = args_[i];
@@ -160,8 +151,7 @@ args::arglist args::parser::parse(unknown_action on_unknown, std::optional<size_
 					return args_.shift(i);
 			}
 		} else {
-			if (!parse_positional(arg, on_unknown))
-				return args_.shift(i);
+			if (!parse_positional(arg, on_unknown)) return args_.shift(i);
 		}
 	}
 
@@ -181,13 +171,13 @@ args::arglist args::parser::parse(unknown_action on_unknown, std::optional<size_
 	return {};
 }
 
-bool args::parser::parse_long(const std::string_view& name, unsigned& i, unknown_action on_unknown) {
-	if (provide_help_ && name == "help")
-		help(parse_width_);
+bool args::parser::parse_long(const std::string_view& name,
+                              unsigned& i,
+                              unknown_action on_unknown) {
+	if (provide_help_ && name == "help") help(parse_width_);
 
 	for (auto& action : actions_) {
-		if (!action->is(name))
-			continue;
+		if (!action->is(name)) continue;
 
 		if (action->needs_arg()) {
 			++i;
@@ -195,8 +185,7 @@ bool args::parser::parse_long(const std::string_view& name, unsigned& i, unknown
 				error(_(lng::needs_param, "--" + s(name)), parse_width_);
 
 			action->visit(*this, s(args_[i]));
-		}
-		else
+		} else
 			action->visit(*this);
 
 		return true;
@@ -208,21 +197,20 @@ bool args::parser::parse_long(const std::string_view& name, unsigned& i, unknown
 }
 
 static inline std::string expand(char c) {
-	char buff[] = { '-', c, 0 };
+	char buff[] = {'-', c, 0};
 	return buff;
 }
-bool args::parser::parse_short(const std::string_view& name, unsigned& arg, unknown_action on_unknown)
-{
+bool args::parser::parse_short(const std::string_view& name,
+                               unsigned& arg,
+                               unknown_action on_unknown) {
 	auto length = name.length();
 	for (decltype(length) i = 0; i < length; ++i) {
 		auto c = name[i];
-		if (provide_help_ && c == 'h')
-			help(parse_width_);
+		if (provide_help_ && c == 'h') help(parse_width_);
 
 		bool found = false;
 		for (auto& action : actions_) {
-			if (!action->is(c))
-				continue;
+			if (!action->is(c)) continue;
 
 			if (action->needs_arg()) {
 				std::string param;
@@ -241,8 +229,7 @@ bool args::parser::parse_short(const std::string_view& name, unsigned& arg, unkn
 				i = length;
 
 				action->visit(*this, param);
-			}
-			else
+			} else
 				action->visit(*this);
 
 			found = true;
@@ -259,11 +246,10 @@ bool args::parser::parse_short(const std::string_view& name, unsigned& arg, unkn
 	return true;
 }
 
-bool args::parser::parse_positional(const std::string_view& value, unknown_action on_unknown)
-{
+bool args::parser::parse_positional(const std::string_view& value,
+                                    unknown_action on_unknown) {
 	for (auto& action : actions_) {
-		if (!action->names().empty())
-			continue;
+		if (!action->names().empty()) continue;
 
 		action->visit(*this, s(value));
 		return true;

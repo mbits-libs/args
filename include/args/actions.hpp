@@ -9,6 +9,7 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
+#include <unordered_set>
 
 namespace args {
 	class parser;
@@ -246,6 +247,27 @@ namespace args {
 			using action::visit;
 			void visit(parser& p, const std::string& arg) override {
 				ptr->push_back(converter<T>::value(p, arg, argname()));
+				visited(true);
+			}
+		};
+
+		template <typename T, typename Hash, typename Eq, typename Allocator>
+		class store_action<std::unordered_set<T, Hash, Eq, Allocator>> final
+		    : public action_base {
+			std::unordered_set<T, Hash, Eq, Allocator>* ptr;
+
+		public:
+			template <typename... Names>
+			explicit store_action(std::unordered_set<T, Hash, Eq, Allocator>* dst,
+			                      Names&&... names)
+			    : action_base(std::forward<Names>(names)...), ptr(dst) {
+				action_base::multiple(true);
+			}
+
+			bool needs_arg() const override { return true; }
+			using action::visit;
+			void visit(parser& p, const std::string& arg) override {
+				ptr->insert(converter<T>::value(p, arg, argname()));
 				visited(true);
 			}
 		};

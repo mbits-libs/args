@@ -48,7 +48,7 @@ namespace args {
 
 	struct file_printer {
 		file_printer(FILE* out) : out(out) {}
-		void print(const char* cur, size_t len) noexcept {
+		void print(char const* cur, size_t len) noexcept {
 			if (len) fwrite(cur, 1, len, out);
 		}
 		void putc(char c) noexcept { fputc(c, out); }
@@ -64,7 +64,7 @@ namespace args {
 	template <typename output>
 	struct printer_base_impl : output {
 		using output::output;
-		inline void format_paragraph(const std::string& text,
+		inline void format_paragraph(std::string const& text,
 		                             size_t indent,
 		                             size_t width) {
 			if (width < 2)
@@ -95,7 +95,7 @@ namespace args {
 				cur = detail::skip_ws(chunk, end);
 			}
 		}
-		inline void format_list(const fmt_list& info, size_t width) {
+		inline void format_list(fmt_list const& info, size_t width) {
 			size_t len = 0;
 			for (auto& chunk : info) {
 				for (auto& [opt, descr] : chunk.items) {
@@ -156,12 +156,12 @@ namespace args {
 		using printer_base_impl<file_printer>::printer_base_impl;
 		using printer_base_impl<file_printer>::format_paragraph;
 		using printer_base_impl<file_printer>::format_list;
-		inline void format_paragraph(const std::string& text,
+		inline void format_paragraph(std::string const& text,
 		                             size_t indent,
 		                             std::optional<size_t> maybe_width = {}) {
 			format_paragraph(text, indent, maybe_width.value_or(width()));
 		}
-		inline void format_list(const fmt_list& info,
+		inline void format_list(fmt_list const& info,
 		                        std::optional<size_t> maybe_width = {}) {
 			format_list(info, maybe_width.value_or(width()));
 		}

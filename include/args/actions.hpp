@@ -17,9 +17,9 @@ namespace args {
 
 	namespace actions {
 		[[noreturn]] void argument_is_not_integer(parser& p,
-		                                          const std::string& name);
+		                                          std::string const& name);
 		[[noreturn]] void argument_out_of_range(parser& p,
-		                                        const std::string& name);
+		                                        std::string const& name);
 	}  // namespace actions
 
 	template <typename T, typename = void>
@@ -28,8 +28,8 @@ namespace args {
 	template <typename T>
 	struct string_converter {
 		static inline T value(parser&,
-		                      const std::string& arg,
-		                      const std::string&) {
+		                      std::string const& arg,
+		                      std::string const&) {
 			return arg;
 		}
 	};
@@ -41,7 +41,7 @@ namespace args {
 	template <typename T>
 	struct converter<
 	    T,
-	    std::enable_if_t<std::is_constructible_v<T, const std::string&> &&
+	    std::enable_if_t<std::is_constructible_v<T, std::string const&> &&
 	                     !is_optional<T>::value>> : string_converter<T> {};
 
 	template <>
@@ -50,8 +50,8 @@ namespace args {
 	template <typename T>
 	struct from_chars_converter {
 		static inline T value(parser& p,
-		                      const std::string& arg,
-		                      const std::string& name) {
+		                      std::string const& arg,
+		                      std::string const& name) {
 			T out{};
 			auto first = arg.data();
 			auto last = first + arg.length();
@@ -76,8 +76,8 @@ namespace args {
 	template <typename T>
 	struct converter<std::optional<T>> {
 		static inline std::optional<T> value(parser& p,
-		                                     const std::string& arg,
-		                                     const std::string& name) {
+		                                     std::string const& arg,
+		                                     std::string const& name) {
 			using inner = converter<T>;
 			return inner::value(p, arg, name);
 		}
@@ -92,25 +92,25 @@ namespace args {
 			virtual void multiple(bool value) = 0;
 			virtual bool needs_arg() const = 0;
 			virtual void visit(parser&) = 0;
-			virtual void visit(parser&, const std::string& /*arg*/) = 0;
+			virtual void visit(parser&, std::string const& /*arg*/) = 0;
 			virtual bool visited() const = 0;
 			virtual void meta(std::string_view s) = 0;
-			virtual std::string meta(const base_translator&) const = 0;
+			virtual std::string meta(base_translator const&) const = 0;
 			virtual void help(std::string_view s) = 0;
-			virtual const std::string& help() const = 0;
+			virtual std::string const& help() const = 0;
 			virtual bool is(std::string_view name) const = 0;
 			virtual bool is(char name) const = 0;
-			virtual const std::vector<std::string>& names() const = 0;
+			virtual std::vector<std::string> const& names() const = 0;
 
-			void append_short_help(const base_translator& _,
+			void append_short_help(base_translator const& _,
 			                       std::string& s) const;
-			std::string help_name(const base_translator& _) const;
+			std::string help_name(base_translator const& _) const;
 
 		protected:
 			action();
-			action(const action&) = delete;
+			action(action const&) = delete;
 			action(action&&);
-			action& operator=(const action&) = delete;
+			action& operator=(action const&) = delete;
 			action& operator=(action&&);
 		};
 
@@ -121,9 +121,9 @@ namespace args {
 			builder(action* ptr, bool required) : ptr(ptr) { req(required); }
 
 		public:
-			builder(const builder&) = delete;
+			builder(builder const&) = delete;
 			builder(builder&&) = default;
-			builder& operator=(const builder&) = delete;
+			builder& operator=(builder const&) = delete;
 			builder& operator=(builder&&) = default;
 
 			builder& meta(std::string_view name) {
@@ -182,14 +182,14 @@ namespace args {
 			bool multiple() const override { return multiple_; }
 
 			void visit(parser&) override { visited_ = true; }
-			void visit(parser&, const std::string& /*arg*/) override {
+			void visit(parser&, std::string const& /*arg*/) override {
 				visited_ = true;
 			}
 			bool visited() const override { return visited_; }
 			void meta(std::string_view s) override { meta_ = s; }
-			std::string meta(const base_translator& _) const override;
+			std::string meta(base_translator const& _) const override;
 			void help(std::string_view s) override { help_ = s; }
-			const std::string& help() const override { return help_; }
+			std::string const& help() const override { return help_; }
 
 			bool is(std::string_view name) const override {
 				for (auto& argname : names_) {
@@ -208,7 +208,7 @@ namespace args {
 				return false;
 			}
 
-			const std::vector<std::string>& names() const override {
+			std::vector<std::string> const& names() const override {
 				return names_;
 			}
 		};
@@ -224,7 +224,7 @@ namespace args {
 
 			bool needs_arg() const override { return true; }
 			using action::visit;
-			void visit(parser& p, const std::string& arg) override {
+			void visit(parser& p, std::string const& arg) override {
 				*ptr = converter<T>::value(p, arg, argname());
 				visited(true);
 			}
@@ -245,7 +245,7 @@ namespace args {
 
 			bool needs_arg() const override { return true; }
 			using action::visit;
-			void visit(parser& p, const std::string& arg) override {
+			void visit(parser& p, std::string const& arg) override {
 				ptr->push_back(converter<T>::value(p, arg, argname()));
 				visited(true);
 			}
@@ -266,7 +266,7 @@ namespace args {
 
 			bool needs_arg() const override { return true; }
 			using action::visit;
-			void visit(parser& p, const std::string& arg) override {
+			void visit(parser& p, std::string const& arg) override {
 				ptr->insert(converter<T>::value(p, arg, argname()));
 				visited(true);
 			}
@@ -354,9 +354,9 @@ namespace args {
 		class custom_action<
 		    Callable,
 		    std::enable_if_t<
-		        detail::is_compatible_with_v<Callable, const std::string&>>>
+		        detail::is_compatible_with_v<Callable, std::string const&>>>
 		    : public action_base {
-			detail::custom_adapter<Callable, const std::string&> cb;
+			detail::custom_adapter<Callable, std::string const&> cb;
 
 		public:
 			template <typename... Names>
@@ -366,7 +366,7 @@ namespace args {
 
 			bool needs_arg() const override { return true; }
 			using action::visit;
-			void visit(parser& p, const std::string& s) override {
+			void visit(parser& p, std::string const& s) override {
 				cb(p, s);
 				visited(true);
 			}

@@ -70,7 +70,7 @@ namespace args {
 		std::string usage_;
 		bool provide_help_ = true;
 		std::optional<size_t> parse_width_ = {};
-		const base_translator* tr_;
+		base_translator const* tr_;
 		[[nodiscard]] std::string _(lng id,
 		                            std::string_view arg1 = {},
 		                            std::string_view arg2 = {}) const {
@@ -79,13 +79,13 @@ namespace args {
 
 		[[nodiscard]] std::pair<size_t, size_t> count_args() const noexcept;
 
-		bool parse_long(const std::string_view& name,
+		bool parse_long(std::string_view const& name,
 		                unsigned& i,
 		                unknown_action on_unknown);
-		bool parse_short(const std::string_view& name,
+		bool parse_short(std::string_view const& name,
 		                 unsigned& i,
 		                 unknown_action on_unknown);
-		bool parse_positional(const std::string_view& value,
+		bool parse_positional(std::string_view const& value,
 		                      unknown_action on_unknown);
 
 		template <typename T, typename... Args>
@@ -105,7 +105,7 @@ namespace args {
 	public:
 		parser(std::string description,
 		       args_view const& args,
-		       const base_translator* tr)
+		       base_translator const* tr)
 		    : description_{std::move(description)}
 		    , args_{args.args}
 		    , prog_{args.progname}
@@ -114,12 +114,12 @@ namespace args {
 		parser(std::string description,
 		       std::string_view progname,
 		       arglist const& args,
-		       const base_translator* tr)
+		       base_translator const* tr)
 		    : parser(std::move(description), {progname, args}, tr) {}
 
 		parser(std::string description,
 		       arglist const& args,
-		       const base_translator* tr)
+		       base_translator const* tr)
 		    : parser(std::move(description), from_main(args), tr) {}
 
 		template <typename T, typename... Names>
@@ -144,25 +144,25 @@ namespace args {
 		std::enable_if_t<
 		    actions::detail::is_compatible_with_v<Callable> ||
 		        actions::detail::is_compatible_with_v<Callable,
-		                                              const std::string&>,
+		                                              std::string const&>,
 		    actions::builder>
 		custom(Callable cb, Names&&... names) {
 			return add<actions::custom_action<Callable>>(
 			    std::move(cb), std::forward<Names>(names)...);
 		}
 
-		void program(const std::string& value);
-		const std::string& program();
+		void program(std::string const& value);
+		std::string const& program() const noexcept;
 
 		void usage(std::string_view value);
-		const std::string& usage();
+		std::string const& usage() const noexcept;
 
 		void provide_help(bool value = true) { provide_help_ = value; }
-		bool provide_help() { return provide_help_; }
+		bool provide_help() const noexcept { return provide_help_; }
 
-		arglist const& args() const { return args_; }
+		arglist const& args() const noexcept { return args_; }
 
-		const base_translator& tr() const noexcept { return *tr_; }
+		base_translator const& tr() const noexcept { return *tr_; }
 
 		std::optional<size_t> parse_width() const noexcept {
 			return parse_width_;
@@ -176,9 +176,9 @@ namespace args {
 
 		void short_help(FILE* out = stdout,
 		                bool for_error = false,
-		                std::optional<size_t> maybe_width = {});
-		[[noreturn]] void help(std::optional<size_t> maybe_width = {});
-		[[noreturn]] void error(const std::string& msg,
-		                        std::optional<size_t> maybe_width = {});
+		                std::optional<size_t> maybe_width = {}) const;
+		[[noreturn]] void help(std::optional<size_t> maybe_width = {}) const;
+		[[noreturn]] void error(std::string const& msg,
+		                        std::optional<size_t> maybe_width = {}) const;
 	};
 }  // namespace args

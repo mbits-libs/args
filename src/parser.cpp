@@ -88,14 +88,14 @@ args::fmt_list args::parser::printer_arguments() const {
 
 void args::parser::short_help(FILE* out,
                               [[maybe_unused]] bool for_error,
-                              std::optional<size_t> maybe_width) {
+                              std::optional<size_t> maybe_width) const {
 	auto shrt{_(lng::usage)};
 	printer_append_usage(shrt);
 
 	printer{out}.format_paragraph(shrt, 7, maybe_width);
 }
 
-void args::parser::help(std::optional<size_t> maybe_width) {
+void args::parser::help(std::optional<size_t> maybe_width) const {
 	short_help(stdout, false, maybe_width);
 
 	if (!description_.empty()) {
@@ -108,19 +108,19 @@ void args::parser::help(std::optional<size_t> maybe_width) {
 	std::exit(0);
 }
 
-void args::parser::error(const std::string& msg,
-                         std::optional<size_t> maybe_width) {
+void args::parser::error(std::string const& msg,
+                         std::optional<size_t> maybe_width) const {
 	short_help(stderr, true, maybe_width);
-	printer{stderr}.format_paragraph(_(lng::error_msg, prog_, std::move(msg)),
+	printer{stderr}.format_paragraph(_(lng::error_msg, prog_, msg),
 	                                 0, maybe_width);
 	std::exit(2);
 }
 
-void args::parser::program(const std::string& value) {
+void args::parser::program(std::string const& value) {
 	prog_ = value;
 }
 
-const std::string& args::parser::program() {
+std::string const& args::parser::program() const noexcept {
 	return prog_;
 }
 
@@ -128,7 +128,7 @@ void args::parser::usage(std::string_view value) {
 	usage_ = value;
 }
 
-const std::string& args::parser::usage() {
+std::string const& args::parser::usage() const noexcept {
 	return usage_;
 }
 
@@ -171,7 +171,7 @@ args::arglist args::parser::parse(unknown_action on_unknown,
 	return {};
 }
 
-bool args::parser::parse_long(const std::string_view& name,
+bool args::parser::parse_long(std::string_view const& name,
                               unsigned& i,
                               unknown_action on_unknown) {
 	if (provide_help_ && name == "help") help(parse_width_);
@@ -200,7 +200,7 @@ static inline std::string expand(char c) {
 	char buff[] = {'-', c, 0};
 	return buff;
 }
-bool args::parser::parse_short(const std::string_view& name,
+bool args::parser::parse_short(std::string_view const& name,
                                unsigned& arg,
                                unknown_action on_unknown) {
 	auto length = name.length();
@@ -246,7 +246,7 @@ bool args::parser::parse_short(const std::string_view& name,
 	return true;
 }
 
-bool args::parser::parse_positional(const std::string_view& value,
+bool args::parser::parse_positional(std::string_view const& value,
                                     unknown_action on_unknown) {
 	for (auto& action : actions_) {
 		if (!action->names().empty()) continue;

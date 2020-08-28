@@ -10,13 +10,13 @@ args::actions::action::action() = default;
 args::actions::action::action(action&&) = default;
 args::actions::action& args::actions::action::operator=(action&&) = default;
 
-void args::actions::action::append_short_help(const base_translator& _,
+void args::actions::action::append_short_help(base_translator const& _,
                                               std::string& s) const {
-	auto aname = ([this](const base_translator& _) {
+	auto aname = ([this](base_translator const& _) {
 		if (names().empty()) return meta(_);
 
-		const auto& name = names().front();
-		const size_t length = name.length();
+		auto const& name = names().front();
+		size_t const length = name.length();
 		size_t additional = 0;
 		if (length > 1) ++additional;
 		++additional;
@@ -54,7 +54,7 @@ void args::actions::action::append_short_help(const base_translator& _,
 	}
 }
 
-std::string args::actions::action::help_name(const base_translator& _) const {
+std::string args::actions::action::help_name(base_translator const& _) const {
 	auto meta_value = meta(_);
 
 	size_t length = 0;
@@ -99,7 +99,7 @@ std::string args::actions::action::help_name(const base_translator& _) const {
 	return nmz;
 }
 
-std::string args::actions::action_base::meta(const base_translator& _) const {
+std::string args::actions::action_base::meta(base_translator const& _) const {
 	return meta_.empty() ? _(lng::def_meta) : meta_;
 }
 
@@ -113,11 +113,11 @@ std::string args::actions::action_base::argname(bool positional) const {
 
 [[noreturn]] void args::actions::argument_is_not_integer(
     parser& p,
-    const std::string& name) {
+    std::string const& name) {
 	p.error(p.tr()(lng::needs_number, name), p.parse_width());
 }
 [[noreturn]] void args::actions::argument_out_of_range(
     parser& p,
-    const std::string& name) {
+    std::string const& name) {
 	p.error(p.tr()(lng::needed_number_exceeded, name), p.parse_width());
 }

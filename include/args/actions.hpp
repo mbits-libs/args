@@ -8,8 +8,17 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <vector>
 #include <unordered_set>
+#include <vector>
+
+#if defined(__has_include)
+#if __has_include(<concepts>)
+#include <concepts>
+#if defined(__cpp_lib_concepts)
+#define HAS_STD_CONCEPTS
+#endif
+#endif
+#endif
 
 namespace args {
 	class parser;
@@ -258,8 +267,9 @@ namespace args {
 
 		public:
 			template <typename... Names>
-			explicit store_action(std::unordered_set<T, Hash, Eq, Allocator>* dst,
-			                      Names&&... names)
+			explicit store_action(
+			    std::unordered_set<T, Hash, Eq, Allocator>* dst,
+			    Names&&... names)
 			    : action_base(std::forward<Names>(names)...), ptr(dst) {
 				action_base::multiple(true);
 			}
@@ -290,10 +300,10 @@ namespace args {
 		};
 
 		namespace detail {
-			template <typename Callable, bool Forward, typename... Args>
+			template <typename Callable, bool WithParser, typename... Args>
 			class custom_adapter_impl {
 			public:
-				custom_adapter_impl(Callable cb) : cb(std::move(cb)) {}
+				custom_adapter_impl(Callable&& cb) : cb(std::move(cb)) {}
 				void operator()(parser& p, Args... args) {
 					cb(p, std::forward<Args>(args)...);
 				}
@@ -305,7 +315,7 @@ namespace args {
 			template <typename Callable, typename... Args>
 			class custom_adapter_impl<Callable, false, Args...> {
 			public:
-				custom_adapter_impl(Callable cb) : cb(std::move(cb)) {}
+				custom_adapter_impl(Callable&& cb) : cb(std::move(cb)) {}
 				void operator()(parser&, Args... args) {
 					cb(std::forward<Args>(args)...);
 				}
@@ -320,25 +330,44 @@ namespace args {
 			    std::is_invocable_v<Callable, parser&, Args...>,
 			    Args...>;
 
+#if defined(HAS_STD_CONCEPTS)
 			template <typename Callable, typename... Args>
-			constexpr bool is_compatible_with_v =
+			concept ActionHandler =
+			    std::invocable<Callable, Args...> ||
+			    std::invocable<Callable, parser&, Args...> &&
+			    !std::invocable<Callable, parser const&, Args...>;
+#else
+			template <typename Callable, typename... Args>
+			constexpr bool is_action_handler_v =
 			    std::is_invocable_v<Callable, Args...> ||
-			    std::is_invocable_v<Callable, parser&, Args...>;
+			    std::is_invocable_v<Callable, parser&, Args...> &&
+				!std::is_invocable_v<Callable, parser const&, Args...>);
+#endif
 		}  // namespace detail
 
+#if defined(HAS_STD_CONCEPTS)
+		template <typename Callable>
+		class custom_action;
+#else
 		template <typename Callable, typename Enable = void>
 		class custom_action;
+#endif
 
+#if defined(HAS_STD_CONCEPTS)
+		template <typename Callable>
+		requires detail::ActionHandler<Callable> class custom_action<Callable>
+#else
 		template <typename Callable>
 		class custom_action<
 		    Callable,
-		    std::enable_if_t<detail::is_compatible_with_v<Callable>>>
+		    std::enable_if_t<detail::is_action_handler_v<Callable>>>
+#endif
 		    : public action_base {
 			detail::custom_adapter<Callable> cb;
 
 		public:
 			template <typename... Names>
-			explicit custom_action(Callable cb, Names&&... names)
+			explicit custom_action(Callable&& cb, Names&&... names)
 			    : action_base(std::forward<Names>(names)...)
 			    , cb(std::move(cb)) {}
 
@@ -350,17 +379,24 @@ namespace args {
 			}
 		};
 
+#if defined(HAS_STD_CONCEPTS)
+		template <typename Callable>
+		requires detail::ActionHandler<
+		    Callable,
+		    std::string const&> class custom_action<Callable>
+#else
 		template <typename Callable>
 		class custom_action<
 		    Callable,
 		    std::enable_if_t<
-		        detail::is_compatible_with_v<Callable, std::string const&>>>
+		        detail::is_action_handler_v<Callable, std::string const&>>>
+#endif
 		    : public action_base {
 			detail::custom_adapter<Callable, std::string const&> cb;
 
 		public:
 			template <typename... Names>
-			explicit custom_action(Callable cb, Names&&... names)
+			explicit custom_action(Callable&& cb, Names&&... names)
 			    : action_base(std::forward<Names>(names)...)
 			    , cb(std::move(cb)) {}
 

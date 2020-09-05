@@ -3,6 +3,9 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   project (args CXX)
   set(LIBARG_TESTING_DEFAULT ON)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+  set(CMAKE_CXX_STANDARD 20)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
 else()
   message(STATUS "Libargs: Subdir")
   set(LIBARG_TESTING_DEFAULT OFF)
@@ -21,8 +24,8 @@ set(LIBARGS_WALL_FLAGS ON CACHE BOOL "Compile with -Wall/-W4 warning levels")
 if (LIBARGS_WALL_FLAGS)
   if (MSVC)
     set(ADDITIONAL_WALL_FLAGS
-        /std:c++latest
         /permissive-
+        /Zc:__cplusplus
         /W4
         /w14242
         /w14254
@@ -46,7 +49,6 @@ if (LIBARGS_WALL_FLAGS)
         /w14946)
   else()
     set(ADDITIONAL_WALL_FLAGS
-        -std=c++17
         -Wall -Wextra
         -Wnon-virtual-dtor
         -Wold-style-cast
@@ -85,11 +87,6 @@ add_library(args STATIC
   include/args/printer.hpp
   include/args/translator.hpp
   )
-set_target_properties(args
-  PROPERTIES
-    CXX_STANDARD 17
-    CXX_EXTENSIONS OFF
-    )
 target_compile_options(args PRIVATE ${ADDITIONAL_WALL_FLAGS})
 target_include_directories(args
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -105,8 +102,6 @@ add_executable(args-test tests/args-test.cpp)
 target_compile_options(args-test PRIVATE ${ADDITIONAL_WALL_FLAGS})
 set_target_properties(args-test
   PROPERTIES
-    CXX_STANDARD 17
-    CXX_EXTENSIONS OFF
     FOLDER tests
     )
 target_link_libraries(args-test args)

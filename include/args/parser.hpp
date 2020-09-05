@@ -58,6 +58,18 @@ namespace args {
 		return from_main({argc, argv});
 	}
 
+#if defined(HAS_STD_CONCEPTS)
+	template <typename Callable>
+	concept AnyActionHandler =
+	    actions::detail::ActionHandler<Callable> ||
+	    actions::detail::ActionHandler<Callable, std::string const&>;
+#else
+	template <typename Callable>
+	using is_any_action_handler_v =
+	    actions::detail::is_action_handler_v<Callable> ||
+	    actions::detail::is_action_handler_v<Callable, std::string const&>;
+#endif
+
 	class parser {
 	public:
 		enum unknown_action { exclusive_parser = 0, allow_subcommands = 1 };
@@ -141,11 +153,11 @@ namespace args {
 		}
 
 		template <typename Callable, typename... Names>
-		std::enable_if_t<
-		    actions::detail::is_compatible_with_v<Callable> ||
-		        actions::detail::is_compatible_with_v<Callable,
-		                                              std::string const&>,
-		    actions::builder>
+#if defined(HAS_STD_CONCEPTS)
+		requires AnyActionHandler<Callable> actions::builder
+#else
+		std::enable_if_t<is_any_action_handler_v<Callable>, actions::builder>
+#endif
 		custom(Callable cb, Names&&... names) {
 			return add<actions::custom_action<Callable>>(
 			    std::move(cb), std::forward<Names>(names)...);
@@ -181,4 +193,60 @@ namespace args {
 		[[noreturn]] void error(std::string const& msg,
 		                        std::optional<size_t> maybe_width = {}) const;
 	};
+#if defined(HAS_STD_CONCEPTS)
+	static_assert(AnyActionHandler<void (*)()>);
+	static_assert(AnyActionHandler<void (*)(std::string)>);
+	static_assert(AnyActionHandler<void (*)(std::string const&)>);
+	static_assert(!AnyActionHandler<void (*)(std::string&)>);
+
+	static_assert(AnyActionHandler<void (*)(parser&)>);
+	static_assert(AnyActionHandler<void (*)(parser&, std::string)>);
+	static_assert(AnyActionHandler<void (*)(parser&, std::string const&)>);
+	static_assert(!AnyActionHandler<void (*)(parser&, std::string&)>);
+
+	static_assert(!AnyActionHandler<void (*)(int)>);
+	static_assert(!AnyActionHandler<std::string const&>);
+	static_assert(!AnyActionHandler<parser&>);
+
+	namespace detail::static_tests {
+#define CONCAT2(A, B) A##_##B
+#define CONCAT(A, B) CONCAT2(A, B)
+#define STRUCT_TEST(ARGS, NOT) \
+	struct CONCAT(Test, __LINE__) {                    \
+		void operator() ARGS;        \
+	};                               \
+	static_assert(NOT AnyActionHandler<CONCAT(Test, __LINE__)>)
+
+#define FAILING_TEST(ARGS) STRUCT_TEST(ARGS, !)
+#define NOTHING
+#define SUCCEEDING_TEST(ARGS) STRUCT_TEST(ARGS, NOTHING)
+
+		class None {};
+		static_assert(!AnyActionHandler<None>);
+
+		SUCCEEDING_TEST(());
+		SUCCEEDING_TEST((parser&));
+		SUCCEEDING_TEST((std::string const&));
+		SUCCEEDING_TEST((std::string));
+		SUCCEEDING_TEST((parser&, std::string const&));
+		SUCCEEDING_TEST((parser&, std::string));
+		SUCCEEDING_TEST((std::string_view const&));
+		SUCCEEDING_TEST((std::string_view));
+		SUCCEEDING_TEST((parser&, std::string_view const&));
+		SUCCEEDING_TEST((parser&, std::string_view));
+
+		FAILING_TEST((parser));
+		FAILING_TEST((std::string&));
+		FAILING_TEST((parser&, std::string&));
+		FAILING_TEST((parser, std::string const&));
+
+		FAILING_TEST((int));
+		FAILING_TEST((parser&, int));
+		FAILING_TEST((std::string const&, int));
+		FAILING_TEST((parser&, std::string const&, int));
+		FAILING_TEST((int, parser&));
+		FAILING_TEST((int, std::string const&));
+		FAILING_TEST((int, parser&, std::string const&));
+	}  // namespace detail::static_tests
+#endif
 }  // namespace args

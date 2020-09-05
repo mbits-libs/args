@@ -15,6 +15,9 @@ endif()
 set(LIBARGS_TESTING ${LIBARG_TESTING_DEFAULT} CACHE BOOL "Compile and/or run self-tests")
 
 if (LIBARGS_TESTING)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  message(STATUS "Python3_EXECUTABLE=${Python3_EXECUTABLE}")
+
   set(COVERALLS_DIRS include/args src)
   include(tools/coveralls/Coveralls.cmake)
 endif()
@@ -106,7 +109,12 @@ set_target_properties(args-test
     )
 target_link_libraries(args-test args)
 
-add_test(NAME args.exit COMMAND python "${CMAKE_CURRENT_SOURCE_DIR}/tests/args-test.py" "$<TARGET_FILE:args-test>")
+add_test(
+  NAME args.exit
+  COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/args-test.py"
+    "$<TARGET_FILE:args-test>"
+    )
 enable_testing()
 
 endif()

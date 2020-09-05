@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import os, sys, subprocess
@@ -50,7 +50,7 @@ def tests():
   return [mktest(*line.split(':', 2)) for line in out.split('\n') if line]
 
 def simplify(outdata):
-  return outdata.replace('\r\n', '\\n').replace('\n', '\\n').replace('\t', '\\t')
+  return outdata.decode('UTF-8').replace('\r\n', '\\n').replace('\n', '\\n').replace('\t', '\\t')
 
 tests_failed = 0
 test_id = 0
@@ -71,9 +71,9 @@ for result, title, output in tests:
   actual
     Which is: {returncode}'''.format(result = result, returncode=p.returncode))
     if p.returncode:
-      print(err)
+      print(err.decode('UTF-8'))
     else:
-      print(out)
+      print(out.decode('UTF-8'))
     print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   elif output != '' and result == 0 and output != simplify(out):
     print('''Expected equality of these values:
@@ -82,9 +82,9 @@ for result, title, output in tests:
   actual
     Which is: {outdata}'''.format(output = output, outdata=simplify(out)))
     if p.returncode:
-      print(err)
+      print(err.decode('UTF-8'))
     else:
-      print(out)
+      print(out.decode('UTF-8'))
     print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   elif output != '' and result != 0 and output != simplify(err):
     print('''Expected equality of these values:
@@ -93,9 +93,9 @@ for result, title, output in tests:
   actual
     Which is: {outdata}'''.format(output = output, outdata=simplify(err)))
     if p.returncode:
-        print(err)
+        print(err.decode('UTF-8'))
     else:
-        print(out)
+        print(out.decode('UTF-8'))
     print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   else:
     print(colored("[       OK ]", "green"), colored(title, "grey"))

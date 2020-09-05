@@ -470,7 +470,7 @@ TEST(custom_string_1_exit) {
 	::args::null_translator tr;
 	::args::parser p{"program description", ::args::from_main(argc, __args),
 	                 &tr};
-	p.custom([](std::string const&) { std::exit(0); }, "path");
+	p.custom([=](std::string const& arg) { std::exit(arg != arg2); }, "path");
 	p.parse();
 
 	return 1;
@@ -502,7 +502,43 @@ TEST(custom_string_2_exit) {
 	::args::null_translator tr;
 	::args::parser p{"program description", ::args::from_main(argc, __args),
 	                 &tr};
-	p.custom([](::args::parser&, std::string const&) { std::exit(0); }, "path");
+	p.custom([=](::args::parser&,
+	             std::string const& arg) { std::exit(arg != arg2); },
+	         "path");
+	p.parse();
+
+	return 1;
+}
+
+TEST(custom_string_view_1_exit) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char arg2[] = "value";
+	char* __args[] = {arg0, arg1, arg2, nullptr};
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{"program description", ::args::from_main(argc, __args),
+	                 &tr};
+	p.custom([=](std::string_view arg) { std::exit(arg != arg2); }, "path");
+	p.parse();
+
+	return 1;
+}
+
+TEST(custom_string_view_2_exit) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--path";
+	char arg2[] = "value";
+	char* __args[] = {arg0, arg1, arg2, nullptr};
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{"program description", ::args::from_main(argc, __args),
+	                 &tr};
+	p.custom(
+	    [=](::args::parser&, std::string_view arg) { std::exit(arg != arg2); },
+	    "path");
 	p.parse();
 
 	return 1;

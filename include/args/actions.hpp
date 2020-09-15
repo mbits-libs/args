@@ -31,37 +31,49 @@ namespace args {
 		                                        std::string const& name);
 	}  // namespace actions
 
-	template <typename T, typename = void>
+	template <typename Storage, typename = void>
 	struct converter {};
 
-	template <typename T>
+	template <typename Storage>
 	struct string_converter {
-		static inline T value(parser&,
-		                      std::string const& arg,
-		                      std::string const&) {
+		static inline Storage value(parser&,
+		                            std::string const& arg,
+		                            std::string const&) {
 			return arg;
 		}
 	};
 
-	template <typename T>
+	template <typename Storage>
 	struct is_optional : std::false_type {};
-	template <typename T>
-	struct is_optional<std::optional<T>> : std::true_type {};
-	template <typename T>
+	template <typename Storage>
+	struct is_optional<std::optional<Storage>> : std::true_type {};
+#ifdef __cpp_concepts
+	template <typename Storage>
+	concept optional = is_optional<Storage>::value;
+#endif
+
+	template <typename Storage>
+#ifdef HAS_STD_CONCEPTS
+	requires(std::constructible_from<Storage, std::string const&> &&
+	         !optional<Storage>) struct converter<Storage>
+#else
 	struct converter<
-	    T,
-	    std::enable_if_t<std::is_constructible_v<T, std::string const&> &&
-	                     !is_optional<T>::value>> : string_converter<T> {};
+	    Storage,
+	    std::enable_if_t<std::is_constructible_v<Storage, std::string const&> &&
+	                     !is_optional<Storage>::value>>
+#endif
+	    : string_converter<Storage> {
+	};
 
 	template <>
 	struct converter<std::string_view> {};
 
-	template <typename T>
+	template <typename Storage>
 	struct from_chars_converter {
-		static inline T value(parser& p,
-		                      std::string const& arg,
-		                      std::string const& name) {
-			T out{};
+		static inline Storage value(parser& p,
+		                            std::string const& arg,
+		                            std::string const& name) {
+			Storage out{};
 			auto first = arg.data();
 			auto last = first + arg.length();
 			auto const result = std::from_chars(first, last, out);
@@ -76,18 +88,23 @@ namespace args {
 		}
 	};
 
-	template <typename T>
-	struct converter<
-	    T,
-	    std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool>>>
-	    : from_chars_converter<T> {};
+	template <typename Storage>
+#ifdef HAS_STD_CONCEPTS
+	requires(std::integral<Storage> && !std::same_as<Storage, bool>)
+	struct converter<Storage>
+#else
+	struct converter<Storage,
+	                 std::enable_if_t<std::is_integral_v<Storage> &&
+	                                  !std::is_same_v<Storage, bool>>>
+#endif
+	    : from_chars_converter<Storage> {};
 
-	template <typename T>
-	struct converter<std::optional<T>> {
-		static inline std::optional<T> value(parser& p,
-		                                     std::string const& arg,
-		                                     std::string const& name) {
-			using inner = converter<T>;
+	template <typename Storage>
+	struct converter<std::optional<Storage>> {
+		static inline std::optional<Storage> value(parser& p,
+		                                           std::string const& arg,
+		                                           std::string const& name) {
+			using inner = converter<Storage>;
 			return inner::value(p, arg, name);
 		}
 	};
@@ -182,7 +199,7 @@ namespace args {
 
 			void visited(bool val) { visited_ = val; }
 
-			std::string argname(bool positional = false) const;
+			std::string argname(parser&) const;
 
 		public:
 			void required(bool value) override { required_ = value; }
@@ -222,31 +239,31 @@ namespace args {
 			}
 		};
 
-		template <typename T>
+		template <typename Storage>
 		class store_action final : public action_base {
-			T* ptr;
+			Storage* ptr;
 
 		public:
 			template <typename... Names>
-			explicit store_action(T* dst, Names&&... names)
+			explicit store_action(Storage* dst, Names&&... names)
 			    : action_base(std::forward<Names>(names)...), ptr(dst) {}
 
 			bool needs_arg() const override { return true; }
 			using action::visit;
 			void visit(parser& p, std::string const& arg) override {
-				*ptr = converter<T>::value(p, arg, argname());
+				*ptr = converter<Storage>::value(p, arg, argname(p));
 				visited(true);
 			}
 		};
 
-		template <typename T, typename Allocator>
-		class store_action<std::vector<T, Allocator>> final
+		template <typename Storage, typename Allocator>
+		class store_action<std::vector<Storage, Allocator>> final
 		    : public action_base {
-			std::vector<T, Allocator>* ptr;
+			std::vector<Storage, Allocator>* ptr;
 
 		public:
 			template <typename... Names>
-			explicit store_action(std::vector<T, Allocator>* dst,
+			explicit store_action(std::vector<Storage, Allocator>* dst,
 			                      Names&&... names)
 			    : action_base(std::forward<Names>(names)...), ptr(dst) {
 				action_base::multiple(true);
@@ -255,20 +272,23 @@ namespace args {
 			bool needs_arg() const override { return true; }
 			using action::visit;
 			void visit(parser& p, std::string const& arg) override {
-				ptr->push_back(converter<T>::value(p, arg, argname()));
+				ptr->push_back(converter<Storage>::value(p, arg, argname(p)));
 				visited(true);
 			}
 		};
 
-		template <typename T, typename Hash, typename Eq, typename Allocator>
-		class store_action<std::unordered_set<T, Hash, Eq, Allocator>> final
-		    : public action_base {
-			std::unordered_set<T, Hash, Eq, Allocator>* ptr;
+		template <typename Storage,
+		          typename Hash,
+		          typename Eq,
+		          typename Allocator>
+		class store_action<std::unordered_set<Storage, Hash, Eq, Allocator>>
+		    final : public action_base {
+			std::unordered_set<Storage, Hash, Eq, Allocator>* ptr;
 
 		public:
 			template <typename... Names>
 			explicit store_action(
-			    std::unordered_set<T, Hash, Eq, Allocator>* dst,
+			    std::unordered_set<Storage, Hash, Eq, Allocator>* dst,
 			    Names&&... names)
 			    : action_base(std::forward<Names>(names)...), ptr(dst) {
 				action_base::multiple(true);
@@ -277,18 +297,18 @@ namespace args {
 			bool needs_arg() const override { return true; }
 			using action::visit;
 			void visit(parser& p, std::string const& arg) override {
-				ptr->insert(converter<T>::value(p, arg, argname()));
+				ptr->insert(converter<Storage>::value(p, arg, argname(p)));
 				visited(true);
 			}
 		};
 
-		template <typename T, typename Value>
+		template <typename Storage, typename Value>
 		class set_value : public action_base {
-			T* ptr;
+			Storage* ptr;
 
 		public:
 			template <typename... Names>
-			explicit set_value(T* dst, Names&&... names)
+			explicit set_value(Storage* dst, Names&&... names)
 			    : action_base(std::forward<Names>(names)...), ptr(dst) {}
 
 			bool needs_arg() const override { return false; }
@@ -334,14 +354,14 @@ namespace args {
 			template <typename Callable, typename... Args>
 			concept ActionHandler =
 			    std::invocable<Callable, Args...> ||
-			    std::invocable<Callable, parser&, Args...> &&
-			    !std::invocable<Callable, parser const&, Args...>;
+			    (std::invocable<Callable, parser&, Args...> &&
+			     !std::invocable<Callable, parser const&, Args...>);
 #else
 			template <typename Callable, typename... Args>
 			constexpr bool is_action_handler_v =
 			    std::is_invocable_v<Callable, Args...> ||
-			    std::is_invocable_v<Callable, parser&, Args...> &&
-				!std::is_invocable_v<Callable, parser const&, Args...>);
+			    (std::is_invocable_v<Callable, parser&, Args...> &&
+			     !std::is_invocable_v<Callable, parser const&, Args...>);
 #endif
 		}  // namespace detail
 

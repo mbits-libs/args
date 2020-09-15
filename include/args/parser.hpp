@@ -6,6 +6,7 @@
 #include <args/actions.hpp>
 #include <args/printer.hpp>
 #include <args/translator.hpp>
+#include <args/version.hpp>
 
 #include <memory>
 
@@ -59,13 +60,18 @@ namespace args {
 	}
 
 #if defined(HAS_STD_CONCEPTS)
+	// can I build a string out of it?
+	template <typename NameType>
+	concept StringLike =
+	    std::constructible_from<std::string, NameType>;
+
 	template <typename Callable>
 	concept AnyActionHandler =
 	    actions::detail::ActionHandler<Callable> ||
 	    actions::detail::ActionHandler<Callable, std::string const&>;
 #else
 	template <typename Callable>
-	using is_any_action_handler_v =
+	constexpr bool is_any_action_handler_v =
 	    actions::detail::is_action_handler_v<Callable> ||
 	    actions::detail::is_action_handler_v<Callable, std::string const&>;
 #endif
@@ -89,7 +95,7 @@ namespace args {
 			return (*tr_)(id, arg1, arg2);
 		}
 
-		[[nodiscard]] std::pair<size_t, size_t> count_args() const noexcept;
+		    [[nodiscard]] std::pair<size_t, size_t> count_args() const noexcept;
 
 		bool parse_long(std::string_view const& name,
 		                unsigned& i,
@@ -100,17 +106,17 @@ namespace args {
 		bool parse_positional(std::string_view const& value,
 		                      unknown_action on_unknown);
 
-		template <typename T, typename... Args>
+		template <typename Action, typename... Args>
 		actions::builder add(Args&&... args) {
 			actions_.push_back(
-			    std::make_unique<T>(std::forward<Args>(args)...));
+			    std::make_unique<Action>(std::forward<Args>(args)...));
 			return {actions_.back().get(), true};
 		}
 
-		template <typename T, typename... Args>
+		template <typename Action, typename... Args>
 		actions::builder add_opt(Args&&... args) {
 			actions_.push_back(
-			    std::make_unique<T>(std::forward<Args>(args)...));
+			    std::make_unique<Action>(std::forward<Args>(args)...));
 			return {actions_.back().get(), false};
 		}
 
@@ -134,27 +140,41 @@ namespace args {
 		       base_translator const* tr)
 		    : parser(std::move(description), from_main(args), tr) {}
 
-		template <typename T, typename... Names>
-		actions::builder arg(T& dst, Names&&... names) {
-			return add<actions::store_action<T>>(&dst,
-			                                     std::forward<Names>(names)...);
-		}
-
-		template <typename T, typename... Names>
-		actions::builder arg(std::optional<T>& dst, Names&&... names) {
-			return add_opt<actions::store_action<std::optional<T>>>(
+		template <typename Storage, typename... Names>
+#if defined(HAS_STD_CONCEPTS)
+		requires(StringLike<Names>&&...)
+#endif
+		actions::builder arg(Storage& dst, Names&&... names) {
+			return add<actions::store_action<Storage>>(
 			    &dst, std::forward<Names>(names)...);
 		}
 
-		template <typename Value, typename T, typename... Names>
-		actions::builder set(T& dst, Names&&... names) {
-			return add<actions::set_value<T, Value>>(
+		template <typename Storage, typename... Names>
+#if defined(HAS_STD_CONCEPTS)
+		requires(StringLike<Names>&&...)
+#endif
+		actions::builder
+		    arg(std::optional<Storage>& dst, Names&&... names) {
+			return add_opt<actions::store_action<std::optional<Storage>>>(
+			    &dst, std::forward<Names>(names)...);
+		}
+
+		template <typename Value, typename Storage, typename... Names>
+#if defined(HAS_STD_CONCEPTS)
+		requires((StringLike<Names> && ...) &&
+		         requires() {
+			         { Value::value } -> std::convertible_to<Storage>;
+		         })
+#endif
+		actions::builder set(Storage& dst, Names&&... names) {
+			return add<actions::set_value<Storage, Value>>(
 			    &dst, std::forward<Names>(names)...);
 		}
 
 		template <typename Callable, typename... Names>
 #if defined(HAS_STD_CONCEPTS)
-		requires AnyActionHandler<Callable> actions::builder
+		requires(AnyActionHandler<Callable> &&
+		         (StringLike<Names> && ...)) actions::builder
 #else
 		std::enable_if_t<is_any_action_handler_v<Callable>, actions::builder>
 #endif
@@ -194,6 +214,22 @@ namespace args {
 		                        std::optional<size_t> maybe_width = {}) const;
 	};
 #if defined(HAS_STD_CONCEPTS)
+	static_assert(StringLike<std::string>);
+	static_assert(StringLike<std::string const&>);
+	static_assert(StringLike<std::string&>);
+	static_assert(StringLike<std::string&&>);
+	static_assert(StringLike<std::string_view>);
+	static_assert(StringLike<std::string_view const&>);
+	static_assert(StringLike<std::string_view&>);
+	static_assert(StringLike<std::string_view&&>);
+	static_assert(StringLike<char(&)[256]>);
+	static_assert(StringLike<char const(&)[256]>);
+	static_assert(StringLike<char*>);
+	static_assert(StringLike<char const*>);
+	static_assert(!StringLike<bool>);
+	static_assert(!StringLike<std::vector<char>>);
+	static_assert(!StringLike<unsigned>);
+	static_assert(!StringLike<long long>);
 	static_assert(AnyActionHandler<void (*)()>);
 	static_assert(AnyActionHandler<void (*)(std::string)>);
 	static_assert(AnyActionHandler<void (*)(std::string const&)>);
@@ -211,10 +247,10 @@ namespace args {
 	namespace detail::static_tests {
 #define CONCAT2(A, B) A##_##B
 #define CONCAT(A, B) CONCAT2(A, B)
-#define STRUCT_TEST(ARGS, NOT) \
-	struct CONCAT(Test, __LINE__) {                    \
-		void operator() ARGS;        \
-	};                               \
+#define STRUCT_TEST(ARGS, NOT)      \
+	struct CONCAT(Test, __LINE__) { \
+		void operator() ARGS;       \
+	};                              \
 	static_assert(NOT AnyActionHandler<CONCAT(Test, __LINE__)>)
 
 #define FAILING_TEST(ARGS) STRUCT_TEST(ARGS, !)

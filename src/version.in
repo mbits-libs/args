@@ -1,0 +1,37 @@
+// DO NOT MODIFY, THIS FILE IS GENERATED FROM src/version.in
+//
+// lib@PROJECT_NAME@/@PROJECT_VERSION@@PROJECT_VERSION_STABILITY@
+//
+// Copyright (c) 2018 midnightBITS
+// This code is licensed under MIT license (see LICENSE for details)
+
+#pragma once
+
+#define LIBARGS_VERSION_STR "@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@"
+#define LIBARGS_VERSION_STR_SHORT "@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@"
+#define LIBARGS_VERSION_STABILITY "@PROJECT_VERSION_STABILITY@"
+#define LIBARGS_NAME "lib@PROJECT_NAME@"
+
+#define LIBARGS_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define LIBARGS_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define LIBARGS_VERSION_PATCH @PROJECT_VERSION_PATCH@
+
+#ifndef RC_INVOKED
+namespace args {
+	struct version_t {
+		static constexpr char string[] = "@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@.@PROJECT_VERSION_PATCH@";
+		static constexpr char string_short[] = "@PROJECT_VERSION_MAJOR@.@PROJECT_VERSION_MINOR@";
+		static constexpr char stability[] = "@PROJECT_VERSION_STABILITY@";
+		static constexpr char string_ui[] = "@PROJECT_VERSION@@PROJECT_VERSION_STABILITY@";
+
+		unsigned major = @PROJECT_VERSION_MAJOR@;
+		unsigned minor = @PROJECT_VERSION_MINOR@;
+		unsigned patch = @PROJECT_VERSION_PATCH@;
+
+#ifdef __cpp_impl_three_way_comparison
+        constexpr auto operator<=>(version_t const&) const noexcept = default;
+#endif
+	};
+    inline constexpr version_t version{};
+}  // namespace args
+#endif

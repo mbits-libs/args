@@ -1,18 +1,30 @@
+cmake_minimum_required (VERSION 3.12)
+project (args
+  VERSION 0.10.0
+  DESCRIPTION ""
+  LANGUAGES CXX)
+
+set(PROJECT_VERSION_STABILITY "") # or "-alpha", or "-beta", or "-rc.5"
+
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-  cmake_minimum_required (VERSION 3.10)
-  project (args CXX)
+  message(STATUS "Libargs: Standalone")
   set(LIBARG_TESTING_DEFAULT ON)
+  set(LIBARG_INSTALL_DEFAULT ON)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+  # It needs at least 17 to compile, but can use concepts to protect some interfaces.
   set(CMAKE_CXX_STANDARD 20)
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+
 else()
   message(STATUS "Libargs: Subdir")
   set(LIBARG_TESTING_DEFAULT OFF)
+  set(LIBARG_INSTALL_DEFAULT OFF)
 endif()
 
 
 set(LIBARGS_TESTING ${LIBARG_TESTING_DEFAULT} CACHE BOOL "Compile and/or run self-tests")
+set(LIBARGS_INSTALL ${LIBARG_INSTALL_DEFAULT} CACHE BOOL "Install the library")
 
 if (LIBARGS_TESTING)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -80,6 +92,8 @@ if (LIBARGS_WALL_FLAGS)
   endif()
 endif()
 
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.in" "${CMAKE_CURRENT_BINARY_DIR}/include/args/version.hpp" @ONLY)
+
 add_library(args STATIC
   src/actions.cpp
   src/parser.cpp
@@ -89,11 +103,24 @@ add_library(args STATIC
   include/args/parser.hpp
   include/args/printer.hpp
   include/args/translator.hpp
+  "${CMAKE_CURRENT_BINARY_DIR}/include/args/version.hpp"
   )
 target_compile_options(args PRIVATE ${ADDITIONAL_WALL_FLAGS})
 target_include_directories(args
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}/include
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+##################################################################
+##  INSTALL
+##################################################################
+
+if (LIBARGS_INSTALL)
+  install(TARGETS args)
+  install(DIRECTORY include/args DESTINATION include)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/args/version.hpp" DESTINATION include/args)
+endif()
 
 ##################################################################
 ##  TESTING

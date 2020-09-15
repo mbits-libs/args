@@ -103,9 +103,8 @@ std::string args::actions::action_base::meta(base_translator const& _) const {
 	return meta_.empty() ? _(lng::def_meta) : meta_;
 }
 
-std::string args::actions::action_base::argname(bool positional) const {
-	if (names().empty()) return {};
-	if (positional) return names().front();
+std::string args::actions::action_base::argname(parser& p) const {
+	if (names().empty()) return meta(p.tr());
 	auto& name = names().front();
 	if (name.length() > 1) return "--" + name;
 	return "-" + name;

@@ -106,11 +106,25 @@ add_library(args STATIC
   "${CMAKE_CURRENT_BINARY_DIR}/include/args/version.hpp"
   )
 target_compile_options(args PRIVATE ${ADDITIONAL_WALL_FLAGS})
+target_compile_features(args PRIVATE cxx_std_17)
 target_include_directories(args
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}/include
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+include(CheckCXXSourceCompiles)
+function(check_charconv)
+  check_cxx_source_compiles("#include <charconv>
+int main() {}" HAS_CHARCONV_)
+  set(HAS_CHARCONV ${HAS_CHARCONV_} PARENT)
+endfunction()
+check_cxx_source_compiles("#include <charconv>
+int main() {}" HAS_CHARCONV)
+
+if (NOT HAS_CHARCONV)
+  message(FATAL_ERROR "The compiler has no access to <charconv>")
+endif()
 
 ##################################################################
 ##  INSTALL

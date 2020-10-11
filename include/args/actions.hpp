@@ -12,11 +12,13 @@
 #include <unordered_set>
 #include <vector>
 
+#if defined(__cpp_concepts)
 #if defined(__has_include)
 #if __has_include(<concepts>)
 #include <concepts>
 #if defined(__cpp_lib_concepts)
 #define HAS_STD_CONCEPTS
+#endif
 #endif
 #endif
 #endif

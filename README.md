@@ -5,7 +5,7 @@
 
 Small open-source library for program argument parser, inspired by Python's `argparse`, depending only on the standard library, with C++17 as minimum requirement.
 
-It automaticaly builds and prints out help info for program arguments, can react to missing or unrecognized arguments and has support for arguments with and without values.
+It automatically builds and prints out help info for program arguments, can react to missing or unrecognized arguments and has support for arguments with and without values.
 
 The argument values can be stored in:
 - `std::string`s,
@@ -111,6 +111,26 @@ usage: prog [-h] [--sum] N [N ...]
 prog: error: argument N is required
 ```
 
+## Argument formats
+
+The arguments with values can have those values either separated by a space or can have it glued to the name of the argument; in case of long names, glued values need to be separated from names by a `"="`.
+
+|Width|Example|Seperated|Glued|Standalone|
+|-----|-------|--------------|-----|-------------|
+|Long|`"arg"`|`--arg value`|`--arg=value`|`--arg`|
+|Short|`"c"`, `"z"`, `"f"`|`-f value`|`-fvalue`|`-c -z`|
+
+Short arguments can also be glued together, except that any argument with a value will take the rest of argument for itself. This makes next lines equivalent:
+
+```plain
+-c -z -f value
+-c -z -fvalue
+-czf value
+-czfvalue
+```
+
+
+
 # Classes
 
 ## args::arglist
@@ -153,6 +173,7 @@ Produces built in translations for given string ids:
 |`help_description`|`"show this help message and exit"`|
 |`unrecognized`|`"unrecognized argument: $arg1"`|
 |`needs_param`|`"argument $arg1: expected one argument"`|
+|`needs_no_param`|`"argument $arg1: value was not expected"`|
 |`needs_number`|`"argument $arg1: expected a number"`|
 |`needed_number_exceeded`|`"argument $arg1: number outside of expected bounds"`|
 |`needed_enum_unknown`|`"argument $arg1: value $arg2 is not recognized"`|

@@ -28,6 +28,8 @@ std::string args::null_translator::operator()(lng id,
 			return "unrecognized argument: " + s(arg1);
 		case lng::needs_param:
 			return "argument " + s(arg1) + ": expected one argument";
+		case lng::needs_no_param:
+			return "argument " + s(arg1) + ": value was not expected";
 		case lng::needs_number:
 			return "argument " + s(arg1) + ": expected a number";
 		case lng::needed_number_exceeded:

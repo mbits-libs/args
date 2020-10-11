@@ -633,3 +633,13 @@ TEST_FAIL_OUT(
 
 	return !(which == thing::none);
 }
+
+TEST(long_param_eq) {
+	return every_test_ever(noop, "-r", "x", "--second=somsink");
+}
+
+TEST_FAIL_OUT(
+    long_param_eq_error,
+    R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: argument --off: value was not expected\n)"sv) {
+	return every_test_ever(noop, "-r", "x", "--second", "somsink", "--off=on");
+}

@@ -176,16 +176,27 @@ bool args::parser::parse_long(std::string_view const& name,
                               unknown_action on_unknown) {
 	if (provide_help_ && name == "help") help(parse_width_);
 
+	auto pos = name.find('=');
+	auto const name_has_value = pos != std::string_view::npos;
+	auto const used_name = name.substr(0, pos);
+
 	for (auto& action : actions_) {
-		if (!action->is(name)) continue;
+		if (!action->is(used_name)) continue;
 
 		if (action->needs_arg()) {
-			++i;
-			if (i >= args_.size())
-				error(_(lng::needs_param, "--" + s(name)), parse_width_);
+			if (name_has_value) {
+				action->visit(*this, s(name.substr(pos + 1)));
+			} else {
+				++i;
+				if (i >= args_.size())
+					error(_(lng::needs_param, "--" + s(used_name)),
+					      parse_width_);
 
-			action->visit(*this, s(args_[i]));
-		} else
+				action->visit(*this, s(args_[i]));
+			}
+		} else if (name_has_value)
+			error(_(lng::needs_no_param, "--" + s(used_name)), parse_width_);
+		else
 			action->visit(*this);
 
 		return true;

@@ -11,7 +11,7 @@ The argument values can be stored in:
 - `std::string`s,
 - things, which can be constructed from strings (excluding `std::string_view`) &mdash; for example `std::filesystem::path`,
 - all things `int` (uses `std::is_integral`, but excludes `bool`),
-- enums, with little help fro library user (uses `std::is_enum` and needs `args::enum_traits` provided), as well as
+- enums, with little help from library user (uses `std::is_enum` and needs `args::enum_traits` provided), as well as
 - `std::optional`, `std::vector` and `std::unordered_set` of the things on this list.
 
 ## Building
@@ -183,32 +183,38 @@ The macros open namespace `args`, so they need to be called from global namespac
 #include <iostream>
 
 enum my_app {
-    enum class opt { none, always, never, automatic };
+    enum class opt { unspecified, always, never, automatic };
 }
 
-// my_app::opt::none is missing
+// my_app::opt::unspecified is missing
 ENUM_TRAITS_BEGIN(my_app::opt)
-	ENUM_TRAITS_NAME(never)
-	ENUM_TRAITS_NAME(always)
-	ENUM_TRAITS_NAME_EX(opt::automatic, "auto")
+    ENUM_TRAITS_NAME(never)
+    ENUM_TRAITS_NAME(always)
+    ENUM_TRAITS_NAME_EX(my_app::opt::automatic, "auto")
 ENUM_TRAITS_END(my_app::opt)
 
 int main(int argc, char* argv[]) {
-    my_app::opt option{my_app::opt::none};
+    my_app::opt option{my_app::opt::unspecified};
 
     args::null_translator tr{};
     args::parser parser{"Use an enum class.",
         args::from_main(argc, argv), &tr};
-    parser.arg(option, "option").meta("WHEN");
+    parser.arg(option, "option").meta("WHEN").opt();
 
     parser.parse();
 
-    std::cout << "Option read.\n";
+    std::cout << option == my_app::opt::unspecified
+        ? "Option unspecified.\n"
+        : "Option read.\n";
 }
 ```
 
 Assuming once again the code above is compiled to `prog`, it will behave nicely, as long as `--option` will be either `always`, `never` or `auto`:
 
+```
+$ ./prog
+Option unspecified.
+```
 ```
 $ ./prog --option always
 Option read.
@@ -219,14 +225,14 @@ Option read.
 ```
 But once we stop using names listed with the macros, the parser will exit with an error:
 ```
-$ ./prog --option none
-usage: prog [-h] --option WHEN
-prog: error: argument --option: value none is not recognized
+$ ./prog --option unspecified
+usage: prog [-h] [--option WHEN]
+prog: error: argument --option: value unspecified is not recognized
 known values for --option: never, always, auto
 ```
 ```
 $ ./prog --option waffles
-usage: prog [-h] --option WHEN
+usage: prog [-h] [--option WHEN]
 prog: error: argument --option: value waffles is not recognized
 known values for --option: never, always, auto
 ```

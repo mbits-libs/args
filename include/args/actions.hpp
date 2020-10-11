@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <array>
 #include <charconv>
 #include <optional>
 #include <string>
@@ -118,10 +119,10 @@ namespace args {
 	struct enum_traits_base {
 		using name_info = std::pair<std::string_view, Storage>;
 		name_info const* begin() const noexcept {
-			return NamesType::names().begin();
+			return NamesType::names().data();
 		}
 		name_info const* end() const noexcept {
-			return NamesType::names().end();
+			return NamesType::names().data() + NamesType::names().size();
 		}
 	};
 

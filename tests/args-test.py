@@ -46,7 +46,7 @@ def tests():
   if p.returncode:
     sys.exit(p.returncode)
 
-  out = out.decode('utf-8')
+  out = out.decode('utf-8').replace('\r\n', '\n')
   return [mktest(*line.split(':', 2)) for line in out.split('\n') if line]
 
 def simplify(outdata):
@@ -55,50 +55,52 @@ def simplify(outdata):
 tests_failed = 0
 test_id = 0
 tests = tests()
+
+def print_result(test_type, val_exp, val_act, expected, actual, returncode=None, err=None, out=None):
+  global tests_failed
+
+  if val_exp == val_act: return True
+
+  tests_failed += 1
+  print('''Expected equality of these values:
+  expected {type}
+    Which is: {expected}
+  actual {type}
+    Which is: {actual}'''.format(type = test_type, expected = expected, actual = actual))
+
+  if returncode is not None:
+    if returncode:
+      print('stderr:')
+      print(err.decode('UTF-8'))
+      print()
+    else:
+      print('stdout:')
+      print(out.decode('UTF-8'))
+      print()
+
+  print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
+  return False
+
+def print_result_simple(test_type, expected, actual):
+  print_result(test_type, expected, actual, expected, actual)
+
 for result, title, output in tests:
   print(colored("[ RUN      ]", "green"), colored(title, "grey"))
   sys.stdout.flush()
+
   p = subprocess.Popen([exe, "%s" % test_id], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   test_id += 1
+
   out, err = p.communicate()
   failed = p.returncode != 0
   should_fail = result != 0
-  if should_fail != failed:
-    tests_failed += 1
-    print('''Expected equality of these values:
-  expected
-    Which is: {result}
-  actual
-    Which is: {returncode}'''.format(result = result, returncode=p.returncode))
-    if p.returncode:
-      print(err.decode('UTF-8'))
-    else:
-      print(out.decode('UTF-8'))
-    print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
-  elif output != '' and result == 0 and output != simplify(out):
-    tests_failed += 1
-    print('''Expected equality of these values:
-  expected
-    Which is: {output}
-  actual
-    Which is: {outdata}'''.format(output = output, outdata=simplify(out)))
-    if p.returncode:
-      print(err.decode('UTF-8'))
-    else:
-      print(out.decode('UTF-8'))
-    print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
-  elif output != '' and result != 0 and output != simplify(err):
-    tests_failed += 1
-    print('''Expected equality of these values:
-  expected
-    Which is: {output}
-  actual
-    Which is: {outdata}'''.format(output = output, outdata=simplify(err)))
-    if p.returncode:
-        print(err.decode('UTF-8'))
-    else:
-        print(out.decode('UTF-8'))
-    print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
+
+  if not print_result('result', should_fail, failed, result, p.returncode, err, out):
+    pass
+  elif output != '' and result == 0 and not print_result_simple('stdout', output, simplify(out)):
+    pass
+  elif output != '' and result != 0 and not print_result_simple('stderr', output, simplify(err)):
+    pass
   else:
     print(colored("[       OK ]", "green"), colored(title, "grey"))
 

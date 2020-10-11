@@ -30,7 +30,8 @@ if (LIBARGS_TESTING)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   message(STATUS "Python3_EXECUTABLE=${Python3_EXECUTABLE}")
 
-  set(COVERALLS_DIRS include/args src)
+  set(COVERALLS_PREFIX LIBARGS_)
+  set(LIBARGS_COVERALLS_DIRS include/args src)
   include(tools/coveralls/Coveralls.cmake)
 endif()
 

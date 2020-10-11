@@ -213,7 +213,11 @@ TEST_FAIL_OUT(
 TEST_FAIL_OUT(
     unknown_positional,
     R"(usage: args-help-test [-h]\nargs-help-test: error: unrecognized argument: POSITIONAL\n)"sv) {
+#ifdef _WIN32
+	char arg0[] = R"(C:\Program Files\Program Name\args-help-test.exe)";
+#else
 	char arg0[] = "/usr/bin/args-help-test";
+#endif
 	char arg1[] = "POSITIONAL";
 	char* __args[] = {arg0, arg1, nullptr};
 	int argc = static_cast<int>(std::size(__args)) - 1;

@@ -39,6 +39,6 @@ before_script:
 script:
   - mkdir build
   - cd build
-  - cmake -DCMAKE_BUILD_TYPE=Debug -DCOVERALLS=ON -DCOVERALLS_UPLOAD=ON ..
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DLIBARGS_COVERALLS=ON -DLIBARGS_COVERALLS_UPLOAD=ON ..
   - make -j`nproc`
   - make coveralls

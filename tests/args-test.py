@@ -59,7 +59,8 @@ tests = tests()
 def print_result(test_type, val_exp, val_act, expected, actual, returncode=None, err=None, out=None):
   global tests_failed
 
-  if val_exp == val_act: return True
+  if val_exp == val_act:
+    return True
 
   tests_failed += 1
   print('''Expected equality of these values:
@@ -67,22 +68,10 @@ def print_result(test_type, val_exp, val_act, expected, actual, returncode=None,
     Which is: {expected}
   actual {type}
     Which is: {actual}'''.format(type = test_type, expected = expected, actual = actual))
-
-  if returncode is not None:
-    if returncode:
-      print('stderr:')
-      print(err.decode('UTF-8'))
-      print()
-    else:
-      print('stdout:')
-      print(out.decode('UTF-8'))
-      print()
-
-  print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   return False
 
 def print_result_simple(test_type, expected, actual):
-  print_result(test_type, expected, actual, expected, actual)
+  return print_result(test_type, expected, actual, expected, actual)
 
 for result, title, output in tests:
   print(colored("[ RUN      ]", "green"), colored(title, "grey"))
@@ -96,11 +85,20 @@ for result, title, output in tests:
   should_fail = result != 0
 
   if not print_result('result', should_fail, failed, result, p.returncode, err, out):
-    pass
+    if p.returncode:
+      print('stderr:')
+      print(err.decode('UTF-8'))
+      print()
+    else:
+      print('stdout:')
+      print(out.decode('UTF-8'))
+      print()
+
+    print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   elif output != '' and result == 0 and not print_result_simple('stdout', output, simplify(out)):
-    pass
+    print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   elif output != '' and result != 0 and not print_result_simple('stderr', output, simplify(err)):
-    pass
+    print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   else:
     print(colored("[       OK ]", "green"), colored(title, "grey"))
 

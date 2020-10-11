@@ -643,3 +643,29 @@ TEST_FAIL_OUT(
     R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: argument --off: value was not expected\n)"sv) {
 	return every_test_ever(noop, "-r", "x", "--second", "somsink", "--off=on");
 }
+
+TEST_OUT(
+    utf_8,
+    "usage: args-help-test [-h] --\xC3\xA7-arg \xC3\xB1 --c-arg n\\n"
+	"\\n"
+	"program description\\n"
+	"\\n"
+	"optional arguments:\\n"
+	" -h, --help show this help message and exit\\n"
+	" --\xC3\xA7-arg \xC3\xB1  |<----\\n"
+	" --c-arg n  |<----\\n"sv) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--help";
+	char* __args[] = {arg0, arg1, nullptr};
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	std::string argument{};
+	::args::null_translator tr;
+	::args::parser p{"program description", ::args::from_main(argc, __args),
+	                 &tr};
+	p.arg(argument, "\xC3\xA7-arg").meta("\xC3\xB1").help("|<----");
+	p.arg(argument, "c-arg").meta("n").help("|<----");
+	p.parse();
+
+	return 1;
+}

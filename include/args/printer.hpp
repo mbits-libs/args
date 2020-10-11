@@ -64,6 +64,23 @@ namespace args {
 	template <typename output>
 	struct printer_base_impl : output {
 		using output::output;
+
+		inline bool leading(char c) noexcept {
+			auto const uc = static_cast<unsigned char>(c);
+			static constexpr auto leading_mask = 0xC0u;
+			static constexpr auto leading_value = 0x80u;
+			return (uc & leading_mask) == leading_value;
+		}
+
+		inline size_t utf8len(std::string_view view) {
+			size_t count{};
+
+			for (auto c : view)
+				count += !leading(c);
+
+			return count;
+		}
+
 		inline void format_paragraph(std::string const& text,
 		                             size_t indent,
 		                             size_t width) {
@@ -95,11 +112,12 @@ namespace args {
 				cur = detail::skip_ws(chunk, end);
 			}
 		}
+
 		inline void format_list(fmt_list const& info, size_t width) {
 			size_t len = 0;
 			for (auto& chunk : info) {
 				for (auto& [opt, descr] : chunk.items) {
-					if (len < opt.length()) len = opt.length();
+					len = std::max(len, utf8len(opt));
 				}
 			}
 
@@ -111,7 +129,7 @@ namespace args {
 					for (auto& [opt, descr] : chunk.items) {
 						output::putc(' ');
 						output::print(opt.c_str(), opt.length());
-						for (size_t i = 0, max = len - opt.length() + 1;
+						for (size_t i = 0, max = len - utf8len(opt) + 1;
 						     i < max; ++i)
 							output::putc(' ');
 						output::print(descr.c_str(), descr.length());
@@ -131,16 +149,15 @@ namespace args {
 				output::putc('\n');
 				format_paragraph(chunk.title + ":", 0, width);
 				for (auto& [opt, descr] : chunk.items) {
-					auto prefix = (len < opt.length() ? opt.length() : len) + 2;
+					auto const spaces = len - utf8len(opt) + 1;
 
 					std::string sum;
-					sum.reserve(prefix + descr.length());
+					sum.reserve(opt.length() + spaces + descr.length() + 1);
 					sum.push_back(' ');
 					sum.append(opt);
-					// prefix - (initial space + the value for the first column)
-					sum.append(prefix - 1 - opt.length(), ' ');
+					sum.append(spaces, ' ');
 					sum.append(descr);
-					format_paragraph(sum, prefix, width);
+					format_paragraph(sum, len + 2, width);
 				}
 			}
 		}

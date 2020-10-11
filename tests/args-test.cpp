@@ -569,3 +569,63 @@ TEST(additional_ctors) {
 
 	return 0;
 }
+
+enum class thing { none, one, two };
+
+ENUM_TRAITS_BEGIN(thing)
+ENUM_TRAITS_NAME(one)
+ENUM_TRAITS_NAME(two)
+ENUM_TRAITS_END(thing)
+
+TEST(enum_arg_one) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--thing";
+	char arg2[] = "one";
+	char* __args[] = {arg0, arg1, arg2, nullptr};
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	thing which{thing::none};
+	::args::null_translator tr;
+	::args::parser p{"program description", ::args::from_main(argc, __args),
+	                 &tr};
+	p.arg(which, "thing");
+	p.parse();
+
+	return !(which == thing::one);
+}
+
+TEST(enum_arg_two) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--thing";
+	char arg2[] = "two";
+	char* __args[] = {arg0, arg1, arg2, nullptr};
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	thing which{thing::none};
+	::args::null_translator tr;
+	::args::parser p{"program description", ::args::from_main(argc, __args),
+	                 &tr};
+	p.arg(which, "thing");
+	p.parse();
+
+	return !(which == thing::two);
+}
+
+TEST_FAIL_OUT(
+    enum_arg_three,
+    R"(usage: args-help-test [-h] --thing ARG\nargs-help-test: error: argument --thing: value three is not recognized\nknown values for --thing: one, two\n)"sv) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "--thing";
+	char arg2[] = "three";
+	char* __args[] = {arg0, arg1, arg2, nullptr};
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	thing which{thing::none};
+	::args::null_translator tr;
+	::args::parser p{"program description", ::args::from_main(argc, __args),
+	                 &tr};
+	p.arg(which, "thing");
+	p.parse();
+
+	return !(which == thing::none);
+}

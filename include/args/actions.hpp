@@ -29,6 +29,10 @@ namespace args {
 		                                          std::string const& name);
 		[[noreturn]] void argument_out_of_range(parser& p,
 		                                        std::string const& name);
+		[[noreturn]] void enum_argument_out_of_range(parser& p,
+		                                             std::string const& name,
+		                                             std::string const& value,
+		                                             std::string const& values);
 	}  // namespace actions
 
 	template <typename Storage, typename = void>
@@ -90,14 +94,15 @@ namespace args {
 
 	template <typename Storage>
 #ifdef HAS_STD_CONCEPTS
-	requires(std::integral<Storage> && !std::same_as<Storage, bool>)
-	struct converter<Storage>
+	requires(std::integral<Storage> &&
+	         !std::same_as<Storage, bool>) struct converter<Storage>
 #else
 	struct converter<Storage,
 	                 std::enable_if_t<std::is_integral_v<Storage> &&
 	                                  !std::is_same_v<Storage, bool>>>
 #endif
-	    : from_chars_converter<Storage> {};
+	    : from_chars_converter<Storage> {
+	};
 
 	template <typename Storage>
 	struct converter<std::optional<Storage>> {
@@ -107,6 +112,90 @@ namespace args {
 			using inner = converter<Storage>;
 			return inner::value(p, arg, name);
 		}
+	};
+
+	template <typename Storage, typename NamesType>
+	struct enum_traits_base {
+		using name_info = std::pair<std::string_view, Storage>;
+		name_info const* begin() const noexcept {
+			return NamesType::names().begin();
+		}
+		name_info const* end() const noexcept {
+			return NamesType::names().end();
+		}
+	};
+
+	template <typename Storage>
+	struct enum_traits;
+
+	template <typename Storage>
+	struct names_helper;
+
+// clang-format off
+// plz, don't mess with it anymore...
+#define ENUM_TRAITS_BEGIN(STORAGE)                                      \
+	namespace args {                                                    \
+		template <>                                                     \
+		struct names_helper<STORAGE> {                                  \
+			static inline auto const& names() {                         \
+				using enum_stg = STORAGE;                               \
+				using name_info = std::pair<std::string_view, STORAGE>; \
+				static constexpr std::array enum_names = {
+#define ENUM_TRAITS_NAME_EX(VALUE, NAME) name_info{NAME, VALUE},
+#define ENUM_TRAITS_NAME(VALUE) name_info{#VALUE, enum_stg::VALUE},
+#define ENUM_TRAITS_END(STORAGE)                                             \
+				};                                                           \
+                                                                             \
+				return enum_names;                                           \
+			}                                                                \
+		};                                                                   \
+                                                                             \
+		template <>                                                          \
+		struct enum_traits<STORAGE>                                          \
+			: enum_traits_base<STORAGE, names_helper<STORAGE>> {             \
+			using parent = enum_traits_base<STORAGE, names_helper<STORAGE>>; \
+			using name_info = typename parent::name_info;                    \
+		};                                                                   \
+	}
+	// clang-format on
+
+	template <typename Storage>
+	struct enum_converter {
+		static inline Storage value(parser& p,
+		                            std::string const& arg,
+		                            std::string const& name) {
+			using traits = enum_traits<Storage>;
+			for (auto [value_name, val] : traits{}) {
+				if (value_name == arg) return val;
+			}
+
+			std::string values{};
+			size_t length{};
+			for (auto [value_name, val] : traits{}) {
+				length += value_name.size() + 2;
+			}
+			if (length) length -= 2;
+			values.reserve(length);
+			bool first = true;
+			for (auto [value_name, val] : traits{}) {
+				if (first)
+					first = false;
+				else
+					values.append(", ");
+				values.append(value_name);
+			}
+
+			actions::enum_argument_out_of_range(p, name, arg, values);
+		}
+	};
+
+	template <typename Storage>
+#ifdef HAS_STD_CONCEPTS
+	requires std::is_enum_v<Storage> struct converter<Storage>
+#else
+	struct converter<Storage, std::enable_if_t<std::is_enum_v<Storage>>>
+#endif
+	    : enum_converter<Storage> {
 	};
 
 	namespace actions {
@@ -239,7 +328,7 @@ namespace args {
 			}
 		};
 
-		template <typename Storage>
+		template <typename Storage, typename = void*>
 		class store_action final : public action_base {
 			Storage* ptr;
 

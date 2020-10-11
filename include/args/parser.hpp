@@ -62,8 +62,7 @@ namespace args {
 #if defined(HAS_STD_CONCEPTS)
 	// can I build a string out of it?
 	template <typename NameType>
-	concept StringLike =
-	    std::constructible_from<std::string, NameType>;
+	concept StringLike = std::constructible_from<std::string, NameType>;
 
 	template <typename Callable>
 	concept AnyActionHandler =
@@ -95,7 +94,7 @@ namespace args {
 			return (*tr_)(id, arg1, arg2);
 		}
 
-		    [[nodiscard]] std::pair<size_t, size_t> count_args() const noexcept;
+		[[nodiscard]] std::pair<size_t, size_t> count_args() const noexcept;
 
 		bool parse_long(std::string_view const& name,
 		                unsigned& i,
@@ -144,7 +143,7 @@ namespace args {
 #if defined(HAS_STD_CONCEPTS)
 		requires(StringLike<Names>&&...)
 #endif
-		actions::builder arg(Storage& dst, Names&&... names) {
+		    actions::builder arg(Storage& dst, Names&&... names) {
 			return add<actions::store_action<Storage>>(
 			    &dst, std::forward<Names>(names)...);
 		}
@@ -153,7 +152,7 @@ namespace args {
 #if defined(HAS_STD_CONCEPTS)
 		requires(StringLike<Names>&&...)
 #endif
-		actions::builder
+		    actions::builder
 		    arg(std::optional<Storage>& dst, Names&&... names) {
 			return add_opt<actions::store_action<std::optional<Storage>>>(
 			    &dst, std::forward<Names>(names)...);
@@ -163,10 +162,11 @@ namespace args {
 #if defined(HAS_STD_CONCEPTS)
 		requires((StringLike<Names> && ...) &&
 		         requires() {
-			         { Value::value } -> std::convertible_to<Storage>;
+			         { Value::value }
+			         ->std::convertible_to<Storage>;
 		         })
 #endif
-		actions::builder set(Storage& dst, Names&&... names) {
+		    actions::builder set(Storage& dst, Names&&... names) {
 			return add<actions::set_value<Storage, Value>>(
 			    &dst, std::forward<Names>(names)...);
 		}
@@ -178,7 +178,7 @@ namespace args {
 #else
 		std::enable_if_t<is_any_action_handler_v<Callable>, actions::builder>
 #endif
-		custom(Callable cb, Names&&... names) {
+		    custom(Callable cb, Names&&... names) {
 			return add<actions::custom_action<Callable>>(
 			    std::move(cb), std::forward<Names>(names)...);
 		}
@@ -222,8 +222,8 @@ namespace args {
 	static_assert(StringLike<std::string_view const&>);
 	static_assert(StringLike<std::string_view&>);
 	static_assert(StringLike<std::string_view&&>);
-	static_assert(StringLike<char(&)[256]>);
-	static_assert(StringLike<char const(&)[256]>);
+	static_assert(StringLike<char (&)[256]>);
+	static_assert(StringLike<char const (&)[256]>);
 	static_assert(StringLike<char*>);
 	static_assert(StringLike<char const*>);
 	static_assert(!StringLike<bool>);

@@ -1,15 +1,17 @@
-# libArgs
+# args
 
-[![Travis (.org)](https://img.shields.io/travis/mbits-libs/libargs)](https://travis-ci.org/mbits-libs/libargs) [![Coveralls github](https://img.shields.io/coveralls/github/mbits-libs/libargs)](https://coveralls.io/github/mbits-libs/libargs?branch=master)
+[![Travis (.org)](https://img.shields.io/travis/mbits-libs/args)](https://travis-ci.org/mbits-libs/args)
+[![Coveralls github](https://img.shields.io/coveralls/github/mbits-libs/args)](https://coveralls.io/github/mbits-libs/args?branch=master)
 
-Small library for program argument parser, inspired by Python's `argparse`, depending only on the standard library, with C++17 as minimum requirement.
+Small open-source library for program argument parser, inspired by Python's `argparse`, depending only on the standard library, with C++17 as minimum requirement.
 
 It automaticaly builds and prints out help info for program arguments, can react to missing or unrecognized arguments and has support for arguments with and without values.
 
 The argument values can be stored in:
 - `std::string`s,
 - things, which can be constructed from strings (excluding `std::string_view`) &mdash; for example `std::filesystem::path`,
-- all things `int` (uses `std::is_integral`, but excludes `bool`), as well as
+- all things `int` (uses `std::is_integral`, but excludes `bool`),
+- enums, with little help fro library user (uses `std::is_enum` and needs `args::enum_traits` provided), as well as
 - `std::optional`, `std::vector` and `std::unordered_set` of the things on this list.
 
 ## Building
@@ -153,8 +155,81 @@ Produces built in translations for given string ids:
 |`needs_param`|`"argument $arg1: expected one argument"`|
 |`needs_number`|`"argument $arg1: expected a number"`|
 |`needed_number_exceeded`|`"argument $arg1: number outside of expected bounds"`|
+|`needed_enum_unknown`|`"argument $arg1: value $arg2 is not recognized"`|
+|`needed_enum_known_values`|`"known values for $arg1: $arg2"`|
 |`required`|`"argument $arg1 is required"`|
 |`error_msg`|`"$arg1: error: $arg2"`|
+
+## args::enum_traits&lt;Enum&gt;
+
+Extension point for the enum arguments, helping convert strings from command line to particular enum value. Best way to provide specialization of this template, is to add series of the macros between enum definition and its usage in the parser:
+
+1. `ENUM_TRAITS_BEGIN(enum-name)` \
+    provides all the machinery for `args::enum_traits<enum-name>` specialization.
+2. One or more of either
+   - `ENUM_TRAITS_NAME(enum-value)` or
+   - `ENUM_TRAITS_NAME_EX(enum-value, "string-to-use")`
+
+    which provide the string-to-enum mapping; one-argument version uses `enum-name` as scope for `enum-value`, while two-argument version is much lower level and the value is left unscoped.
+3. `ENUM_TRAITS_END(enum-name)` \
+    finishes all the work started by `ENUM_TRAITS_BEGIN(enum-name)`.
+
+The macros open namespace `args`, so they need to be called from global namespace for this tool to work.
+
+### Example
+
+```cpp
+#include <args/parser.hpp>
+#include <iostream>
+
+enum my_app {
+    enum class opt { none, always, never, automatic };
+}
+
+// my_app::opt::none is missing
+ENUM_TRAITS_BEGIN(my_app::opt)
+	ENUM_TRAITS_NAME(never)
+	ENUM_TRAITS_NAME(always)
+	ENUM_TRAITS_NAME_EX(opt::automatic, "auto")
+ENUM_TRAITS_END(my_app::opt)
+
+int main(int argc, char* argv[]) {
+    my_app::opt option{my_app::opt::none};
+
+    args::null_translator tr{};
+    args::parser parser{"Use an enum class.",
+        args::from_main(argc, argv), &tr};
+    parser.arg(option, "option").meta("WHEN");
+
+    parser.parse();
+
+    std::cout << "Option read.\n";
+}
+```
+
+Assuming once again the code above is compiled to `prog`, it will behave nicely, as long as `--option` will be either `always`, `never` or `auto`:
+
+```
+$ ./prog --option always
+Option read.
+```
+```
+$ ./prog --option never
+Option read.
+```
+But once we stop using names listed with the macros, the parser will exit with an error:
+```
+$ ./prog --option none
+usage: prog [-h] --option WHEN
+prog: error: argument --option: value none is not recognized
+known values for --option: never, always, auto
+```
+```
+$ ./prog --option waffles
+usage: prog [-h] --option WHEN
+prog: error: argument --option: value waffles is not recognized
+known values for --option: never, always, auto
+```
 
 ## args::actions::builder
 

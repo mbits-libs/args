@@ -115,8 +115,19 @@ std::string args::actions::action_base::argname(parser& p) const {
     std::string const& name) {
 	p.error(p.tr()(lng::needs_number, name), p.parse_width());
 }
+
 [[noreturn]] void args::actions::argument_out_of_range(
     parser& p,
     std::string const& name) {
 	p.error(p.tr()(lng::needed_number_exceeded, name), p.parse_width());
+}
+
+[[noreturn]] void args::actions::enum_argument_out_of_range(
+    parser& p,
+    std::string const& name,
+    std::string const& value,
+    std::string const& values) {
+	p.error(p.tr()(lng::needed_enum_unknown, name, value) + "\n" +
+	            p.tr()(lng::needed_enum_known_values, name, values),
+	        p.parse_width());
 }

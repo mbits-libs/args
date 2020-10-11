@@ -17,6 +17,8 @@ namespace args {
 		needs_param,
 		needs_number,
 		needed_number_exceeded,
+		needed_enum_unknown,
+		needed_enum_known_values,
 		required,
 		error_msg
 	};

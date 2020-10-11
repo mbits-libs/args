@@ -76,6 +76,7 @@ for result, title, output in tests:
       print(out.decode('UTF-8'))
     print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   elif output != '' and result == 0 and output != simplify(out):
+    tests_failed += 1
     print('''Expected equality of these values:
   expected
     Which is: {output}
@@ -87,6 +88,7 @@ for result, title, output in tests:
       print(out.decode('UTF-8'))
     print(colored("[  FAILED  ]", "red"), colored(title, "grey"))
   elif output != '' and result != 0 and output != simplify(err):
+    tests_failed += 1
     print('''Expected equality of these values:
   expected
     Which is: {output}

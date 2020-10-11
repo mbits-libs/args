@@ -33,6 +33,11 @@ std::string args::null_translator::operator()(lng id,
 		case lng::needed_number_exceeded:
 			return "argument " + s(arg1) +
 			       ": number outside of expected bounds";
+		case lng::needed_enum_unknown:
+			return "argument " + s(arg1) + ": value " + s(arg2) +
+			       " is not recognized";
+		case lng::needed_enum_known_values:
+			return "known values for " + s(arg1) + ": " + s(arg2);
 		case lng::required:
 			return "argument " + s(arg1) + " is required";
 		case lng::error_msg:

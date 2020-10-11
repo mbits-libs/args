@@ -111,8 +111,8 @@ void args::parser::help(std::optional<size_t> maybe_width) const {
 void args::parser::error(std::string const& msg,
                          std::optional<size_t> maybe_width) const {
 	short_help(stderr, true, maybe_width);
-	printer{stderr}.format_paragraph(_(lng::error_msg, prog_, msg),
-	                                 0, maybe_width);
+	printer{stderr}.format_paragraph(_(lng::error_msg, prog_, msg), 0,
+	                                 maybe_width);
 	std::exit(2);
 }
 

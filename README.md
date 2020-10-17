@@ -5,7 +5,7 @@
 
 Small open-source library for program argument parser, inspired by Python's `argparse`, depending only on the standard library, with C++17 as minimum requirement.
 
-It automatically builds and prints out help info for program arguments, can react to missing or unrecognized arguments and has support for arguments with and without values.
+It automatically builds and prints out help info for program arguments, can react to missing or unrecognized arguments and has support for arguments with and without values. It can also support placing long lists of arguments into an [@answer-file](#parseruse_answer_file).
 
 The argument values can be stored in:
 - `std::string`s,
@@ -129,8 +129,6 @@ Short arguments can also be glued together, except that any argument with a valu
 -czfvalue
 ```
 
-
-
 # Classes
 
 ## args::arglist
@@ -180,6 +178,7 @@ Produces built in translations for given string ids:
 |`needed_enum_known_values`|`"known values for $arg1: $arg2"`|
 |`required`|`"argument $arg1 is required"`|
 |`error_msg`|`"$arg1: error: $arg2"`|
+|`file_not_found`|`"cannot open $arg1"`|
 
 ## args::enum_traits&lt;Enum&gt;
 
@@ -376,11 +375,46 @@ Parses the arguments. The `on_unknown` instructs the parser, how to react on an 
 
 The `maybe_width` is a hint for terminal width. If missing, will try to get the current width of a terminal. If the program is not attached to terminal, will print the messages without any formatting.
 
+### parser::use_answer_file
+
+```cxx
+void use_answer_file(char marker = '@');
+bool uses_answer_file() const noexcept;
+char answer_file_marker() const noexcept;
+```
+
+Turns on/off support for answer files in argument list. By default, `marker` is set to 0, which turns the support off.
+
+```c++
+assert(!parser.uses_answer_file());
+parser.use_answer_file();
+assert(parser.uses_answer_file());
+```
+
+When turned on, will use the marker character to recognize the name of the answer file and use further arguments from there. For instance, if a program decides to support answer files and file named `options` contains this text:
+
+```
+-vv
+-v
+--arg1=value1
+--arg2
+value2
+--arg3=value3
+--arg4
+```
+
+Then those calls are equivalent:
+
+```
+$ ./prog -vvv --arg1 value1 --arg2 value2 --arg3=value3 --arg4
+$ ./prog @options
+```
+
 ### parser::provide_help
 
 ```cxx
-void provide_help(bool value = true);
-bool provide_help() const noexcept;
+void provide_help(bool value);
+bool provides_help() const noexcept;
 ```
 
 Turns off/on the built in support for `"-h"` and `"--help"` arguments.

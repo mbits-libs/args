@@ -4,6 +4,115 @@
 #include <args/parser.hpp>
 
 #include <cstring>
+#include <fstream>
+
+namespace {
+	inline std::string s(std::string_view sv) {
+		return {sv.data(), sv.length()};
+	}
+
+	inline std::string const& s(std::string const& in) { return in; }
+
+	inline args::chunk& make_title(args::chunk& part,
+	                               std::string title,
+	                               size_t count) {
+		part.title = std::move(title);
+		part.items.reserve(count);
+		return part;
+	}
+
+	inline std::string to_name(std::string_view key) {
+		std::string name;
+		if (key.size() == 1) {
+			name.reserve(2);
+			name.push_back('-');
+		} else {
+			name.reserve(2 + key.size());
+			name.push_back('-');
+			name.push_back('-');
+		}
+		name.append(key);
+
+		return name;
+	}
+	inline std::string to_name(char key) {
+		return to_name(std::string_view(&key, 1));
+	}
+
+	using actions_type = std::vector<std::unique_ptr<args::actions::action>>;
+	inline args::actions::action* find_by_name(std::string_view name,
+	                                           actions_type const& actions) {
+		for (auto& action : actions) {
+			if (!action->is(name)) continue;
+			return action.get();
+		}
+
+		return nullptr;
+	}
+
+	inline args::actions::action* find_by_name(char name,
+	                                           actions_type const& actions) {
+		for (auto& action : actions) {
+			if (!action->is(name)) continue;
+			return action.get();
+		}
+
+		return nullptr;
+	}
+
+	struct args_list {
+		args::arglist args;
+		unsigned index{};
+		std::string_view current_value{};
+
+		using string_type = std::string_view;
+
+		bool next() {
+			if (args.size() == index) return false;
+			++index;
+			return true;
+		}
+
+		std::string_view argument() const noexcept { return args[index - 1]; }
+
+		void set_current(std::string_view curr) { current_value = curr; }
+		std::string_view current() const noexcept { return current_value; }
+
+		args::arglist unused() const noexcept {
+			auto ndx = index;
+			if (ndx) --ndx;
+			return args.shift(ndx);
+		}
+	};
+
+	struct answer_file {
+		std::ifstream options{};
+		std::string current_line{};
+		std::string_view current_value{};
+
+		using string_type = std::string*;
+
+		bool next() {
+			bool whitespace_only = true;
+			while (whitespace_only) {
+				if (!std::getline(options, current_line)) return false;
+
+				for (auto c : current_line) {
+					if (!std::isspace(static_cast<unsigned char>(c))) {
+						whitespace_only = false;
+						break;
+					}
+				}
+			}
+			return true;
+		}
+
+		std::string const& argument() const noexcept { return current_line; }
+
+		void set_current(std::string_view curr) { current_value = curr; }
+		std::string_view current() const noexcept { return current_value; }
+	};
+}  // namespace
 
 std::string_view args::arglist::program_name(std::string_view arg0) noexcept {
 #ifdef _WIN32
@@ -48,14 +157,6 @@ void args::parser::printer_append_usage(std::string& shrt) const {
 		for (auto& action : actions_)
 			action->append_short_help(*tr_, shrt);
 	}
-}
-
-static args::chunk& make_title(args::chunk& part,
-                               std::string title,
-                               size_t count) {
-	part.title = std::move(title);
-	part.items.reserve(count);
-	return part;
 }
 
 args::fmt_list args::parser::printer_arguments() const {
@@ -132,38 +233,21 @@ std::string const& args::parser::usage() const noexcept {
 	return usage_;
 }
 
-static std::string s(std::string_view sv) {
-	return {sv.data(), sv.length()};
-}
-
 args::arglist args::parser::parse(unknown_action on_unknown,
                                   std::optional<size_t> maybe_width) {
 	parse_width_ = maybe_width;
-	auto count = args_.size();
-	for (decltype(count) i = 0; i < count; ++i) {
-		auto arg = args_[i];
-		if (arg.length() > 1 && arg[0] == '-') {
-			if (arg.length() > 2 && arg[1] == '-') {
-				if (!parse_long(arg.substr(2), i, on_unknown))
-					return args_.shift(i);
-			} else {
-				if (!parse_short(arg.substr(1), i, on_unknown))
-					return args_.shift(i);
-			}
-		} else {
-			if (!parse_positional(arg, on_unknown)) return args_.shift(i);
-		}
-	}
+	args_list list{args_};
+
+	if (!parse_list(list, on_unknown)) return list.unused();
 
 	for (auto& action : actions_) {
 		if (action->required() && !action->visited()) {
 			std::string arg;
-			if (action->names().empty()) {
+			if (action->names().empty())
 				arg = action->meta(*tr_);
-			} else {
-				auto& name = action->names().front();
-				arg = name.length() == 1 ? "-" + name : "--" + name;
-			}
+			else
+				arg = to_name(action->names().front());
+
 			error(_(lng::required, arg), maybe_width);
 		}
 	}
@@ -171,102 +255,132 @@ args::arglist args::parser::parse(unknown_action on_unknown,
 	return {};
 }
 
-bool args::parser::parse_long(std::string_view const& name,
-                              unsigned& i,
-                              unknown_action on_unknown) {
-	if (provide_help_ && name == "help") help(parse_width_);
-
-	auto pos = name.find('=');
-	auto const name_has_value = pos != std::string_view::npos;
-	auto const used_name = name.substr(0, pos);
-
-	for (auto& action : actions_) {
-		if (!action->is(used_name)) continue;
-
-		if (action->needs_arg()) {
-			if (name_has_value) {
-				action->visit(*this, s(name.substr(pos + 1)));
-			} else {
-				++i;
-				if (i >= args_.size())
-					error(_(lng::needs_param, "--" + s(used_name)),
-					      parse_width_);
-
-				action->visit(*this, s(args_[i]));
+template <typename ArgList>
+bool args::parser::parse_list(ArgList& list, unknown_action on_unknown) {
+	while (list.next()) {
+		auto&& arg = list.argument();
+		if (arg.length() > 1 && arg[0] == '-') {
+			if (arg.length() > 2 && arg[1] == '-') {
+				list.set_current(std::string_view{arg}.substr(2));
+				if (!parse_long(list, on_unknown)) return false;
+				continue;
 			}
-		} else if (name_has_value)
-			error(_(lng::needs_no_param, "--" + s(used_name)), parse_width_);
-		else
-			action->visit(*this);
 
-		return true;
-	}
-
-	if (on_unknown == exclusive_parser)
-		error(_(lng::unrecognized, "--" + s(name)), parse_width_);
-	return false;
-}
-
-static inline std::string expand(char c) {
-	char buff[] = {'-', c, 0};
-	return buff;
-}
-bool args::parser::parse_short(std::string_view const& name,
-                               unsigned& arg,
-                               unknown_action on_unknown) {
-	auto length = name.length();
-	for (decltype(length) i = 0; i < length; ++i) {
-		auto c = name[i];
-		if (provide_help_ && c == 'h') help(parse_width_);
-
-		bool found = false;
-		for (auto& action : actions_) {
-			if (!action->is(c)) continue;
-
-			if (action->needs_arg()) {
-				std::string param;
-
-				++i;
-				if (i < length)
-					param = name.substr(i);
-				else {
-					++arg;
-					if (arg >= args_.size())
-						error(_(lng::needs_param, expand(c)), parse_width_);
-
-					param = args_[arg];
-				}
-
-				i = length;
-
-				action->visit(*this, param);
-			} else
-				action->visit(*this);
-
-			found = true;
-			break;
+			list.set_current(std::string_view{arg}.substr(1));
+			if (!parse_short(list, on_unknown)) return false;
+			continue;
 		}
 
-		if (!found) {
-			if (on_unknown == exclusive_parser)
-				error(_(lng::unrecognized, expand(c)), parse_width_);
-			return false;
+		if (uses_answer_file() && arg.length() > 1 &&
+		    arg[0] == answer_file_marker()) {
+			if (!parse_answer_file(s(arg).substr(1), on_unknown)) return false;
+		} else {
+			if (!parse_positional(s(arg), on_unknown)) return false;
 		}
 	}
 
 	return true;
 }
 
-bool args::parser::parse_positional(std::string_view const& value,
+template <typename ArgList>
+bool args::parser::parse_long(ArgList& list, unknown_action on_unknown) {
+	auto name = list.current();
+
+	if (provide_help_ && name == "help") help(parse_width_);
+
+	auto pos = name.find('=');
+	auto const name_has_value = pos != std::string_view::npos;
+	auto const used_name = name.substr(0, pos);
+
+	auto action = find_by_name(used_name, actions_);
+
+	if (!action) {
+		if (on_unknown == exclusive_parser)
+			error(_(lng::unrecognized, to_name(used_name)), parse_width_);
+		return false;
+	}
+
+	if (!action->needs_arg()) {
+		if (name_has_value)
+			error(_(lng::needs_no_param, to_name(used_name)), parse_width_);
+
+		action->visit(*this);
+		return true;
+	}
+
+	if (name_has_value) {
+		action->visit(*this, s(name.substr(pos + 1)));
+		return true;
+	}
+
+	if (list.next()) {
+		action->visit(*this, s(list.argument()));
+		return true;
+	}
+
+	error(_(lng::needs_param, to_name(used_name)), parse_width_);
+}
+
+template <typename ArgList>
+bool args::parser::parse_short(ArgList& list, unknown_action on_unknown) {
+	auto argument = list.current();
+	auto length = argument.length();
+	for (decltype(length) index = 0; index < length; ++index) {
+		auto name = argument[index];
+		if (provide_help_ && name == 'h') help(parse_width_);
+
+		auto action = find_by_name(name, actions_);
+
+		if (!action) {
+			if (on_unknown == exclusive_parser)
+				error(_(lng::unrecognized, to_name(name)), parse_width_);
+			return false;
+		}
+
+		if (!action->needs_arg()) {
+			action->visit(*this);
+			continue;
+		}
+
+		std::string param;
+
+		++index;
+		if (index < length) {
+			auto param = argument.substr(index);
+			index = length;
+			action->visit(*this, s(param));
+			continue;
+		}
+
+		if (list.next()) {
+			action->visit(*this, s(list.argument()));
+			continue;
+		}
+
+		error(_(lng::needs_param, to_name(name)), parse_width_);
+	}
+
+	return true;
+}
+
+bool args::parser::parse_positional(std::string const& value,
                                     unknown_action on_unknown) {
 	for (auto& action : actions_) {
 		if (!action->names().empty()) continue;
 
-		action->visit(*this, s(value));
+		action->visit(*this, value);
 		return true;
 	}
 
 	if (on_unknown == exclusive_parser)
 		error(_(lng::unrecognized, value), parse_width_);
 	return false;
+}
+
+bool args::parser::parse_answer_file(std::string const& path,
+                                     unknown_action on_unknown) {
+	answer_file list{};
+	list.options.open(path);
+	if (list.options.fail()) error(_(lng::file_not_found, path), parse_width_);
+	return parse_list(list, on_unknown);
 }

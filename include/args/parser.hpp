@@ -86,6 +86,7 @@ namespace args {
 		std::string prog_;
 		std::string usage_;
 		bool provide_help_ = true;
+		char answer_file_marker_{};
 		std::optional<size_t> parse_width_ = {};
 		base_translator const* tr_;
 		[[nodiscard]] std::string _(lng id,
@@ -96,14 +97,16 @@ namespace args {
 
 		[[nodiscard]] std::pair<size_t, size_t> count_args() const noexcept;
 
-		bool parse_long(std::string_view const& name,
-		                unsigned& i,
-		                unknown_action on_unknown);
-		bool parse_short(std::string_view const& name,
-		                 unsigned& i,
-		                 unknown_action on_unknown);
-		bool parse_positional(std::string_view const& value,
+		template <typename ArgList>
+		bool parse_list(ArgList& list, unknown_action on_unknown);
+		template <typename ArgList>
+		bool parse_long(ArgList& list, unknown_action on_unknown);
+		template <typename ArgList>
+		bool parse_short(ArgList& list, unknown_action on_unknown);
+		bool parse_positional(std::string const& value,
 		                      unknown_action on_unknown);
+		bool parse_answer_file(std::string const& value,
+		                       unknown_action on_unknown);
 
 		template <typename Action, typename... Args>
 		actions::builder add(Args&&... args) {
@@ -190,7 +193,15 @@ namespace args {
 		std::string const& usage() const noexcept;
 
 		void provide_help(bool value = true) { provide_help_ = value; }
-		bool provide_help() const noexcept { return provide_help_; }
+		bool provides_help() const noexcept { return provide_help_; }
+
+		void use_answer_file(char marker = '@') {
+			answer_file_marker_ = marker;
+		}
+		bool uses_answer_file() const noexcept {
+			return answer_file_marker_ != 0;
+		}
+		char answer_file_marker() const noexcept { return answer_file_marker_; }
 
 		arglist const& args() const noexcept { return args_; }
 

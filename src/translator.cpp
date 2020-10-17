@@ -44,6 +44,8 @@ std::string args::null_translator::operator()(lng id,
 			return "argument " + s(arg1) + " is required";
 		case lng::error_msg:
 			return s(arg1) + ": error: " + s(arg2);
+		case lng::file_not_found:
+			return "cannot open " + s(arg1);
 	}
 	return "<unrecognized string>";
 }

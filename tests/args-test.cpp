@@ -100,6 +100,14 @@ void modify(args::parser& parser) {
 	}
 }
 
+void enable_answers(args::parser& parser) {
+	parser.use_answer_file();
+}
+
+void enable_answers_dollar(args::parser& parser) {
+	parser.use_answer_file('$');
+}
+
 template <typename T, typename U>
 void EQ_impl(T&& lhs, U&& rhs, const char* lhs_name, const char* rhs_name) {
 	if (lhs == rhs) return;
@@ -644,16 +652,15 @@ TEST_FAIL_OUT(
 	return every_test_ever(noop, "-r", "x", "--second", "somsink", "--off=on");
 }
 
-TEST_OUT(
-    utf_8,
-    "usage: args-help-test [-h] --\xC3\xA7-arg \xC3\xB1 --c-arg n\\n"
-	"\\n"
-	"program description\\n"
-	"\\n"
-	"optional arguments:\\n"
-	" -h, --help show this help message and exit\\n"
-	" --\xC3\xA7-arg \xC3\xB1  |<----\\n"
-	" --c-arg n  |<----\\n"sv) {
+TEST_OUT(utf_8,
+         "usage: args-help-test [-h] --\xC3\xA7-arg \xC3\xB1 --c-arg n\\n"
+         "\\n"
+         "program description\\n"
+         "\\n"
+         "optional arguments:\\n"
+         " -h, --help show this help message and exit\\n"
+         " --\xC3\xA7-arg \xC3\xB1  |<----\\n"
+         " --c-arg n  |<----\\n"sv) {
 	char arg0[] = "args-help-test";
 	char arg1[] = "--help";
 	char* __args[] = {arg0, arg1, nullptr};
@@ -668,4 +675,103 @@ TEST_OUT(
 	p.parse();
 
 	return 1;
+}
+
+TEST_FAIL_OUT(
+    no_answer_file_support,
+    R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...]\nargs-help-test: error: unrecognized argument: @minimal-args\n)"sv) {
+	std::string arg_opt;
+	std::string arg_req;
+	bool starts_as_false{false};
+	bool starts_as_true{true};
+	std::vector<std::string> multi_opt;
+	std::vector<std::string> multi_req;
+
+	char arg0[] = "args-help-test";
+	char arg1[] = "@minimal-args";
+	char* __args[] = {arg0, arg1, nullptr};
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	::args::null_translator tr;
+	::args::parser p{"program description", ::args::from_main(argc, __args),
+	                 &tr};
+	p.arg(arg_opt, "o", "opt").meta("VAR").help("a help for arg_opt").opt();
+	p.arg(arg_req, "r", "req").help("a help for arg_req");
+	p.set<std::true_type>(starts_as_false, "on", "1")
+	    .help("a help for on")
+	    .opt();
+	p.set<std::false_type>(starts_as_true, "off", "0")
+	    .help("a help for off")
+	    .opt();
+	p.arg(multi_opt, "first").help("zero or more").opt();
+	p.arg(multi_req, "second").meta("VAL").help("one or more");
+	p.parse();
+
+	return 0;
+}
+
+TEST(answer_file) {
+	return every_test_ever(enable_answers, "@minimal-args");
+}
+
+TEST_FAIL_OUT(
+    answer_file_not_found,
+    R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: cannot open no-such-file\n)"sv) {
+	return every_test_ever(enable_answers, "@no-such-file");
+}
+
+TEST(answer_file_before) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "@minimal-args";
+	char arg2[] = "-r";
+	char arg3[] = "y";
+	char* __args[] = {arg0, arg1, arg2, arg3, nullptr};
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	std::string r{}, s{};
+	::args::null_translator tr;
+	::args::parser p{"program description", ::args::from_main(argc, __args),
+	                 &tr};
+	p.use_answer_file();
+	p.arg(r, "r", "req").help("a help for arg_req");
+	p.arg(s, "second").meta("VAL").help("one or more");
+	p.parse();
+
+	return !(r == "y");
+}
+
+TEST(answer_file_after) {
+	char arg0[] = "args-help-test";
+	char arg1[] = "-r";
+	char arg2[] = "y";
+	char arg3[] = "@minimal-args";
+	char* __args[] = {arg0, arg1, arg2, arg3, nullptr};
+	int argc = static_cast<int>(std::size(__args)) - 1;
+
+	std::string r{}, s{};
+	::args::null_translator tr;
+	::args::parser p{"program description", ::args::from_main(argc, __args),
+	                 &tr};
+	p.use_answer_file();
+	p.arg(r, "r", "req").help("a help for arg_req");
+	p.arg(s, "second").meta("VAL").help("one or more");
+	p.parse();
+
+	return !(r == "x");
+}
+
+TEST(answer_file_alt) {
+	return every_test_ever(enable_answers_dollar, "$minimal-args");
+}
+
+TEST_FAIL_OUT(
+    answer_file_unexpected,
+    R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: argument --off: value was not expected\n)"sv) {
+	return every_test_ever(enable_answers, "@unexpected-arg-value");
+}
+
+TEST_FAIL_OUT(
+    answer_file_unknown,
+    R"(usage: args-help-test [-h] [-o VAR] -r ARG [--on] [--off] [--first ARG ...] --second VAL [--second VAL ...] [INPUT]\nargs-help-test: error: unrecognized argument: --unexpected\n)"sv) {
+	return every_test_ever(enable_answers, "@unknown-arg");
 }

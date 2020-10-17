@@ -21,7 +21,8 @@ namespace args {
 		needed_enum_unknown,
 		needed_enum_known_values,
 		required,
-		error_msg
+		error_msg,
+		file_not_found
 	};
 
 	struct base_translator {

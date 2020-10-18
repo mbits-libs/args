@@ -1,6 +1,6 @@
-cmake_minimum_required (VERSION 3.12)
-project (args
-  VERSION 0.12.0
+cmake_minimum_required(VERSION 3.12)
+project(args
+  VERSION 0.12.1
   DESCRIPTION ""
   LANGUAGES CXX)
 
@@ -8,6 +8,10 @@ set(PROJECT_VERSION_STABILITY "") # or "-alpha", or "-beta", or "-rc.5"
 
 if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   message(STATUS "Libargs: Standalone")
+
+  include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+  conan_basic_setup(TARGETS)
+
   set(LIBARG_TESTING_DEFAULT ON)
   set(LIBARG_INSTALL_DEFAULT ON)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -25,6 +29,7 @@ endif()
 
 set(LIBARGS_TESTING ${LIBARG_TESTING_DEFAULT} CACHE BOOL "Compile and/or run self-tests")
 set(LIBARGS_INSTALL ${LIBARG_INSTALL_DEFAULT} CACHE BOOL "Install the library")
+set(LIBARGS_SHARED OFF CACHE BOOL "Build an .so instead of the .a archive")
 
 if (LIBARGS_TESTING)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
@@ -95,18 +100,21 @@ endif()
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.in" "${CMAKE_CURRENT_BINARY_DIR}/include/args/version.hpp" @ONLY)
 
-add_library(args STATIC
+set(BUILD_SHARED_LIBS ${LIBARGS_SHARED})
+add_library(args
   src/actions.cpp
   src/parser.cpp
   src/printer.cpp
   src/translator.cpp
   include/args/actions.hpp
+  include/args/api.hpp
   include/args/parser.hpp
   include/args/printer.hpp
   include/args/translator.hpp
   "${CMAKE_CURRENT_BINARY_DIR}/include/args/version.hpp"
   )
 target_compile_options(args PRIVATE ${ADDITIONAL_WALL_FLAGS})
+target_compile_definitions(args PRIVATE LIBARGS_EXPORTING)
 target_compile_features(args PRIVATE cxx_std_17)
 target_include_directories(args
   PUBLIC
@@ -114,6 +122,10 @@ target_include_directories(args
     ${CMAKE_CURRENT_BINARY_DIR}/include
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+if (LIBARGS_SHARED)
+  target_compile_definitions(args PUBLIC LIBARGS_SHARED)
+endif()
+  
 include(CheckCXXSourceCompiles)
 function(check_charconv)
   check_cxx_source_compiles("#include <charconv>

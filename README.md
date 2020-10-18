@@ -14,28 +14,94 @@ The argument values can be stored in:
 - enums, with little help from library user (uses `std::is_enum` and needs `args::enum_traits` provided), as well as
 - `std::optional`, `std::vector` and `std::unordered_set` of the things on this list.
 
+## Config
+
+Type of all CMake variables blow is `BOOL`.
+
+|Project variable|Comment|
+|----------------|-------|
+|`LIBARGS_TESTING`|Compile and/or run self-tests. _Adds `test` target (`RUN_TESTS` on MSVC), which runs automatic tests._ |
+|`LIBARGS_INSTALL`|Install the library. _Adds `install` target (`INSTALL` on MSVC), which installs all distributable files inside `CMAKE_INSTALL_PREFIX` directory. On MSVC it operates on `Release` configuration._ |
+|`LIBARGS_SHARED`|Build an .so instead of the .a archive. _Setting this variable is still experimental. Since this is pre-1.0 code, installing a shared library system-wide is not advised in the first place, in addition there is little experience in using this library as a shared entity._ |
+|`LIBARGS_COVERALLS`|Turn on coveralls support. _Ads `coveralls` target, which runs tests and gathers coverage results in the Coveralls.io compatible JSON file. This variable is only available, if `LIBARGS_TESTING` is true. On Ubuntu, it works only with `gcov`, `llvm`-based solution is not available. On MSVC it operates on `Debug` configuration and requires [OpenCppCoverage](https://github.com/OpenCppCoverage/OpenCppCoverage) installed and on `%PATH%`._|
+
 ## Building
+
+Conan is used for proper `MD`/`MDd`/`MT`/`MTd` setup. This project does not require any dependencies otherwise. The `<Config>` used in recipes below is either `Debug` or `Release`.
+
+### Ubuntu
 
 ```sh
 mkdir build && cd build
-cmake .. -G Ninja -DLIBARGS_TESTING=OFF -DLIBARGS_INSTALL=OFF
+conan install .. -s build_type=<Config>
+cmake .. \
+  -G Ninja \
+  -DLIBARGS_TESTING=OFF \
+  -DLIBARGS_INSTALL=OFF \
+  -DCMAKE_BUILD_TYPE=<Config>
 ninja
+```
+
+### Windows
+
+The `<RT>` below is either `MD` or `MT` for `Release`, or `MDd` or `MTd` for `Debug`. If `LIBARGS_SHARED` is set to `ON`, then `MD`/`MDd` is strongly advised.
+
+```sh
+mkdir build && cd build
+conan install .. -s build_type=<Config> -s compiler.runtime=<RT>
+cmake .. -G Ninja -DLIBARGS_TESTING=OFF -DLIBARGS_INSTALL=OFF
+cmake --build . --target ALL_BUILD -- ^
+  /nologo /v:m /p:Configuration=<Config>
 ```
 
 ## Testing
 
+### Ubuntu
+
 ```sh
 mkdir build && cd build
-cmake .. -G Ninja -DLIBARGS_TESTING=ON
+conan install .. -s build_type=<Config>
+cmake .. \
+  -G Ninja \
+  -DLIBARGS_TESTING=ON \
+  -DLIBARGS_INSTALL=OFF \
+  -DCMAKE_BUILD_TYPE=<Config>
 ninja && ninja test
+```
+
+### Windows
+
+```sh
+mkdir build && cd build
+conan install .. -s build_type=<Config> -s compiler.runtime=<RT>
+cmake .. -G Ninja -DLIBARGS_TESTING=ON -DLIBARGS_INSTALL=OFF
+cmake --build . --target RUN_TESTS -- ^
+  /nologo /v:m /p:Configuration=<Config>
 ```
 
 ## Installing
 
+### Ubuntu
+
 ```sh
 mkdir build && cd build
-cmake .. -G Ninja -DLIBARGS_TESTING=OFF -DLIBARGS_INSTALL=ON
+conan install .. -s build_type=Release
+cmake .. \
+  -G Ninja \
+  -DLIBARGS_TESTING=OFF \
+  -DLIBARGS_INSTALL=ON \
+  -DCMAKE_BUILD_TYPE=Release
 ninja && sudo ninja install
+```
+
+### Windows
+
+```sh
+mkdir build && cd build
+conan install .. -s build_type=Release -s compiler.runtime=MD
+cmake .. -G Ninja -DLIBARGS_TESTING=OFF -DLIBARGS_INSTALL=ON
+cmake --build . --target RUN_TESTS -- ^
+  /nologo /v:m /p:Configuration=Release
 ```
 
 ## Example
@@ -115,7 +181,7 @@ prog: error: argument N is required
 
 The arguments with values can have those values either separated by a space or can have it glued to the name of the argument; in case of long names, glued values need to be separated from names by a `"="`.
 
-|Width|Example|Seperated|Glued|Standalone|
+|Width|Example|Separated|Glued|Standalone|
 |-----|-------|--------------|-----|-------------|
 |Long|`"arg"`|`--arg value`|`--arg=value`|`--arg`|
 |Short|`"c"`, `"z"`, `"f"`|`-f value`|`-fvalue`|`-c -z`|
@@ -190,7 +256,7 @@ Extension point for the enum arguments, helping convert strings from command lin
    - `ENUM_TRAITS_NAME(enum-value)` or
    - `ENUM_TRAITS_NAME_EX(enum-value, "string-to-use")`
 
-    which provide the string-to-enum mapping; one-argument version uses `enum-name` as scope for `enum-value`, while two-argument version is much lower level and the value is left unscoped.
+    which provide the string-to-enum mapping; one-argument version uses `enum-name` as scope for `enum-value`, while two-argument version is much lower level and the value is left not scoped.
 3. `ENUM_TRAITS_END(enum-name)` \
     finishes all the work started by `ENUM_TRAITS_BEGIN(enum-name)`.
 

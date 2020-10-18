@@ -5,6 +5,7 @@
 
 #include <string>
 #include <string_view>
+#include <args/api.hpp>
 
 namespace args {
 	enum class lng : int {
@@ -25,7 +26,7 @@ namespace args {
 		file_not_found
 	};
 
-	struct base_translator {
+	struct LIBARGS_API base_translator {
 		virtual ~base_translator();
 		base_translator();
 		base_translator(base_translator const&) = delete;
@@ -37,7 +38,7 @@ namespace args {
 		                               std::string_view arg2 = {}) const = 0;
 	};
 
-	class null_translator : public base_translator {
+	class LIBARGS_API null_translator : public base_translator {
 	public:
 		std::string operator()(lng id,
 		                       std::string_view arg1,

@@ -6,11 +6,12 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <args/api.hpp>
 
 namespace args {
 	namespace detail {
-		bool is_terminal(FILE* out) noexcept;
-		size_t terminal_width(FILE* out) noexcept;
+		LIBARGS_API bool is_terminal(FILE* out) noexcept;
+		LIBARGS_API size_t terminal_width(FILE* out) noexcept;
 
 		template <typename It>
 		inline It split(It cur, It end, size_t width) noexcept {

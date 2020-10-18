@@ -23,19 +23,24 @@
 #endif
 #endif
 
+#include <args/api.hpp>
+
 namespace args {
 	class parser;
 	struct base_translator;
 
 	namespace actions {
-		[[noreturn]] void argument_is_not_integer(parser& p,
-		                                          std::string const& name);
-		[[noreturn]] void argument_out_of_range(parser& p,
-		                                        std::string const& name);
-		[[noreturn]] void enum_argument_out_of_range(parser& p,
-		                                             std::string const& name,
-		                                             std::string const& value,
-		                                             std::string const& values);
+		[[noreturn]] LIBARGS_API void argument_is_not_integer(
+		    parser& p,
+		    std::string const& name);
+		[[noreturn]] LIBARGS_API void argument_out_of_range(
+		    parser& p,
+		    std::string const& name);
+		[[noreturn]] LIBARGS_API void enum_argument_out_of_range(
+		    parser& p,
+		    std::string const& name,
+		    std::string const& value,
+		    std::string const& values);
 	}  // namespace actions
 
 	template <typename Storage, typename = void>
@@ -202,7 +207,7 @@ namespace args {
 	};
 
 	namespace actions {
-		struct action {
+		struct LIBARGS_API action {
 			virtual ~action();
 			virtual bool required() const = 0;
 			virtual void required(bool value) = 0;
@@ -291,7 +296,7 @@ namespace args {
 
 			void visited(bool val) { visited_ = val; }
 
-			std::string argname(parser&) const;
+			LIBARGS_API std::string argname(parser&) const;
 
 		public:
 			void required(bool value) override { required_ = value; }
@@ -305,7 +310,8 @@ namespace args {
 			}
 			bool visited() const override { return visited_; }
 			void meta(std::string_view s) override { meta_ = s; }
-			std::string meta(base_translator const& _) const override;
+			LIBARGS_API std::string meta(
+			    base_translator const& _) const override;
 			void help(std::string_view s) override { help_ = s; }
 			std::string const& help() const override { return help_; }
 

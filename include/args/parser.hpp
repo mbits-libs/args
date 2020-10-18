@@ -41,7 +41,8 @@ namespace args {
 			return {count_ - n, args_ + n};
 		}
 
-		static std::string_view program_name(std::string_view arg0) noexcept;
+		LIBARGS_API static std::string_view program_name(
+		    std::string_view arg0) noexcept;
 	};
 
 	struct args_view {
@@ -186,11 +187,11 @@ namespace args {
 			    std::move(cb), std::forward<Names>(names)...);
 		}
 
-		void program(std::string const& value);
-		std::string const& program() const noexcept;
+		LIBARGS_API void program(std::string const& value);
+		LIBARGS_API std::string const& program() const noexcept;
 
-		void usage(std::string_view value);
-		std::string const& usage() const noexcept;
+		LIBARGS_API void usage(std::string_view value);
+		LIBARGS_API std::string const& usage() const noexcept;
 
 		void provide_help(bool value = true) { provide_help_ = value; }
 		bool provides_help() const noexcept { return provide_help_; }
@@ -211,89 +212,20 @@ namespace args {
 			return parse_width_;
 		}
 
-		arglist parse(unknown_action on_unknown = exclusive_parser,
-		              std::optional<size_t> maybe_width = {});
+		LIBARGS_API arglist parse(unknown_action on_unknown = exclusive_parser,
+		                          std::optional<size_t> maybe_width = {});
 
-		void printer_append_usage(std::string& out) const;
-		fmt_list printer_arguments() const;
+		LIBARGS_API void printer_append_usage(std::string& out) const;
+		LIBARGS_API fmt_list printer_arguments() const;
 
-		void short_help(FILE* out = stdout,
-		                bool for_error = false,
-		                std::optional<size_t> maybe_width = {}) const;
-		[[noreturn]] void help(std::optional<size_t> maybe_width = {}) const;
-		[[noreturn]] void error(std::string const& msg,
-		                        std::optional<size_t> maybe_width = {}) const;
+		LIBARGS_API void short_help(
+		    FILE* out = stdout,
+		    bool for_error = false,
+		    std::optional<size_t> maybe_width = {}) const;
+		[[noreturn]] LIBARGS_API void help(
+		    std::optional<size_t> maybe_width = {}) const;
+		[[noreturn]] LIBARGS_API void error(
+		    std::string const& msg,
+		    std::optional<size_t> maybe_width = {}) const;
 	};
-#if defined(HAS_STD_CONCEPTS)
-	static_assert(StringLike<std::string>);
-	static_assert(StringLike<std::string const&>);
-	static_assert(StringLike<std::string&>);
-	static_assert(StringLike<std::string&&>);
-	static_assert(StringLike<std::string_view>);
-	static_assert(StringLike<std::string_view const&>);
-	static_assert(StringLike<std::string_view&>);
-	static_assert(StringLike<std::string_view&&>);
-	static_assert(StringLike<char (&)[256]>);
-	static_assert(StringLike<char const (&)[256]>);
-	static_assert(StringLike<char*>);
-	static_assert(StringLike<char const*>);
-	static_assert(!StringLike<bool>);
-	static_assert(!StringLike<std::vector<char>>);
-	static_assert(!StringLike<unsigned>);
-	static_assert(!StringLike<long long>);
-	static_assert(AnyActionHandler<void (*)()>);
-	static_assert(AnyActionHandler<void (*)(std::string)>);
-	static_assert(AnyActionHandler<void (*)(std::string const&)>);
-	static_assert(!AnyActionHandler<void (*)(std::string&)>);
-
-	static_assert(AnyActionHandler<void (*)(parser&)>);
-	static_assert(AnyActionHandler<void (*)(parser&, std::string)>);
-	static_assert(AnyActionHandler<void (*)(parser&, std::string const&)>);
-	static_assert(!AnyActionHandler<void (*)(parser&, std::string&)>);
-
-	static_assert(!AnyActionHandler<void (*)(int)>);
-	static_assert(!AnyActionHandler<std::string const&>);
-	static_assert(!AnyActionHandler<parser&>);
-
-	namespace detail::static_tests {
-#define CONCAT2(A, B) A##_##B
-#define CONCAT(A, B) CONCAT2(A, B)
-#define STRUCT_TEST(ARGS, NOT)      \
-	struct CONCAT(Test, __LINE__) { \
-		void operator() ARGS;       \
-	};                              \
-	static_assert(NOT AnyActionHandler<CONCAT(Test, __LINE__)>)
-
-#define FAILING_TEST(ARGS) STRUCT_TEST(ARGS, !)
-#define NOTHING
-#define SUCCEEDING_TEST(ARGS) STRUCT_TEST(ARGS, NOTHING)
-
-		class None {};
-		static_assert(!AnyActionHandler<None>);
-
-		SUCCEEDING_TEST(());
-		SUCCEEDING_TEST((parser&));
-		SUCCEEDING_TEST((std::string const&));
-		SUCCEEDING_TEST((std::string));
-		SUCCEEDING_TEST((parser&, std::string const&));
-		SUCCEEDING_TEST((parser&, std::string));
-		SUCCEEDING_TEST((std::string_view const&));
-		SUCCEEDING_TEST((std::string_view));
-		SUCCEEDING_TEST((parser&, std::string_view const&));
-		SUCCEEDING_TEST((parser&, std::string_view));
-
-		FAILING_TEST((parser));
-		FAILING_TEST((std::string&));
-		FAILING_TEST((parser&, std::string&));
-		FAILING_TEST((parser, std::string const&));
-
-		FAILING_TEST((int));
-		FAILING_TEST((parser&, int));
-		FAILING_TEST((std::string const&, int));
-		FAILING_TEST((parser&, std::string const&, int));
-		FAILING_TEST((int, parser&));
-		FAILING_TEST((int, std::string const&));
-		FAILING_TEST((int, parser&, std::string const&));
-	}  // namespace detail::static_tests
-#endif
 }  // namespace args

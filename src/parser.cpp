@@ -342,8 +342,6 @@ bool args::parser::parse_short(ArgList& list, unknown_action on_unknown) {
 			continue;
 		}
 
-		std::string param;
-
 		++index;
 		if (index < length) {
 			auto param = argument.substr(index);
@@ -384,3 +382,77 @@ bool args::parser::parse_answer_file(std::string const& path,
 	if (list.options.fail()) error(_(lng::file_not_found, path), parse_width_);
 	return parse_list(list, on_unknown);
 }
+
+#if defined(HAS_STD_CONCEPTS)
+static_assert(args::StringLike<std::string>);
+static_assert(args::StringLike<std::string const&>);
+static_assert(args::StringLike<std::string&>);
+static_assert(args::StringLike<std::string&&>);
+static_assert(args::StringLike<std::string_view>);
+static_assert(args::StringLike<std::string_view const&>);
+static_assert(args::StringLike<std::string_view&>);
+static_assert(args::StringLike<std::string_view&&>);
+static_assert(args::StringLike<char (&)[256]>);
+static_assert(args::StringLike<char const (&)[256]>);
+static_assert(args::StringLike<char*>);
+static_assert(args::StringLike<char const*>);
+static_assert(!args::StringLike<bool>);
+static_assert(!args::StringLike<std::vector<char>>);
+static_assert(!args::StringLike<unsigned>);
+static_assert(!args::StringLike<long long>);
+static_assert(args::AnyActionHandler<void (*)()>);
+static_assert(args::AnyActionHandler<void (*)(std::string)>);
+static_assert(args::AnyActionHandler<void (*)(std::string const&)>);
+static_assert(!args::AnyActionHandler<void (*)(std::string&)>);
+
+static_assert(args::AnyActionHandler<void (*)(args::parser&)>);
+static_assert(args::AnyActionHandler<void (*)(args::parser&, std::string)>);
+static_assert(
+    args::AnyActionHandler<void (*)(args::parser&, std::string const&)>);
+static_assert(!args::AnyActionHandler<void (*)(args::parser&, std::string&)>);
+
+static_assert(!args::AnyActionHandler<void (*)(int)>);
+static_assert(!args::AnyActionHandler<std::string const&>);
+static_assert(!args::AnyActionHandler<args::parser&>);
+
+namespace detail::static_tests {
+#define CONCAT2(A, B) A##_##B
+#define CONCAT(A, B) CONCAT2(A, B)
+#define STRUCT_TEST(ARGS, NOT)      \
+	struct CONCAT(Test, __LINE__) { \
+		void operator() ARGS;       \
+	};                              \
+	static_assert(NOT args::AnyActionHandler<CONCAT(Test, __LINE__)>)
+
+#define FAILING_TEST(ARGS) STRUCT_TEST(ARGS, !)
+#define NOTHING
+#define SUCCEEDING_TEST(ARGS) STRUCT_TEST(ARGS, NOTHING)
+
+	class None {};
+	static_assert(!args::AnyActionHandler<None>);
+
+	SUCCEEDING_TEST(());
+	SUCCEEDING_TEST((args::parser&));
+	SUCCEEDING_TEST((std::string const&));
+	SUCCEEDING_TEST((std::string));
+	SUCCEEDING_TEST((args::parser&, std::string const&));
+	SUCCEEDING_TEST((args::parser&, std::string));
+	SUCCEEDING_TEST((std::string_view const&));
+	SUCCEEDING_TEST((std::string_view));
+	SUCCEEDING_TEST((args::parser&, std::string_view const&));
+	SUCCEEDING_TEST((args::parser&, std::string_view));
+
+	FAILING_TEST((args::parser));
+	FAILING_TEST((std::string&));
+	FAILING_TEST((args::parser&, std::string&));
+	FAILING_TEST((args::parser, std::string const&));
+
+	FAILING_TEST((int));
+	FAILING_TEST((args::parser&, int));
+	FAILING_TEST((std::string const&, int));
+	FAILING_TEST((args::parser&, std::string const&, int));
+	FAILING_TEST((int, args::parser&));
+	FAILING_TEST((int, std::string const&));
+	FAILING_TEST((int, args::parser&, std::string const&));
+}  // namespace detail::static_tests
+#endif

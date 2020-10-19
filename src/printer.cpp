@@ -12,6 +12,7 @@
 #else
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <errno.h>
 #define _isatty(FD) isatty(FD)
 #define _fileno(OBJ) fileno(OBJ)
 #endif

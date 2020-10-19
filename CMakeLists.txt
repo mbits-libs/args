@@ -17,8 +17,13 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
   # It needs at least 17 to compile, but can use concepts to protect some interfaces.
-  set(CMAKE_CXX_STANDARD 20)
-  set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+  if (NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+    message(STATUS "Building for C++${CMAKE_CXX_STANDARD}")
+  else()
+    message(STATUS "Building for C++${CMAKE_CXX_STANDARD} (set externally)")
+  endif()
 
 else()
   message(STATUS "Libargs: Subdir")
@@ -83,7 +88,7 @@ if (LIBARGS_WALL_FLAGS)
         -Wdouble-promotion
         -Wformat=2
     )
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
       list(APPEND ADDITIONAL_WALL_FLAGS -fcolor-diagnostics) # -Wlifetime
     else()
       list(APPEND ADDITIONAL_WALL_FLAGS

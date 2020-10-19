@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include <args/api.hpp>
 #include <optional>
 #include <string>
 #include <vector>
-#include <args/api.hpp>
 
 namespace args {
 	namespace detail {

@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include <args/api.hpp>
 #include <string>
 #include <string_view>
-#include <args/api.hpp>
 
 namespace args {
 	enum class lng : int {

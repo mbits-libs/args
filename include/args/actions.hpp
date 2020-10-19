@@ -80,6 +80,12 @@ namespace args {
 	template <>
 	struct converter<std::string_view> {};
 
+	template <>
+	struct converter<char const*> {};
+
+	template <>
+	struct converter<char*> {};
+
 	template <typename Storage>
 	struct from_chars_converter {
 		static inline Storage value(parser& p,
@@ -122,6 +128,19 @@ namespace args {
 		}
 	};
 
+	template <typename Item>
+	struct simple_span {
+		template <size_t Length>
+		constexpr simple_span(Item const (&items)[Length])
+		    : ptr_{items}, length_{Length} {}
+
+		constexpr Item const* data() const noexcept { return ptr_; }
+		constexpr size_t size() const noexcept { return length_; }
+	private:
+		Item const* ptr_;
+		size_t length_;
+	};
+
 	template <typename Storage, typename NamesType>
 	struct enum_traits_base {
 		using name_info = std::pair<std::string_view, Storage>;
@@ -141,29 +160,32 @@ namespace args {
 
 // clang-format off
 // plz, don't mess with it anymore...
-#define ENUM_TRAITS_BEGIN(STORAGE)                                      \
-	namespace args {                                                    \
-		template <>                                                     \
-		struct names_helper<STORAGE> {                                  \
-			static inline auto const& names() {                         \
-				using enum_stg = STORAGE;                               \
-				using name_info = std::pair<std::string_view, STORAGE>; \
-				static constexpr std::array enum_names = {
-#define ENUM_TRAITS_NAME_EX(VALUE, NAME) name_info{NAME, VALUE},
-#define ENUM_TRAITS_NAME(VALUE) name_info{#VALUE, enum_stg::VALUE},
-#define ENUM_TRAITS_END(STORAGE)                                             \
-				};                                                           \
-                                                                             \
-				return enum_names;                                           \
-			}                                                                \
-		};                                                                   \
-                                                                             \
-		template <>                                                          \
-		struct enum_traits<STORAGE>                                          \
-			: enum_traits_base<STORAGE, names_helper<STORAGE>> {             \
-			using parent = enum_traits_base<STORAGE, names_helper<STORAGE>>; \
-			using name_info = typename parent::name_info;                    \
-		};                                                                   \
+#define ENUM_TRAITS_BEGIN(STORAGE)                                  \
+	namespace args {                                                \
+		template <>                                                 \
+		struct names_helper<STORAGE> {                              \
+			using name_info = std::pair<std::string_view, STORAGE>; \
+			static inline simple_span<name_info> const& names() {   \
+				using enum_stg = STORAGE;                           \
+				static constexpr name_info enum_names[] = {
+#define ENUM_TRAITS_NAME_EX(VALUE, NAME) {NAME, VALUE},
+#define ENUM_TRAITS_NAME(VALUE) {#VALUE, enum_stg::VALUE},
+#define ENUM_TRAITS_END(STORAGE)                                 \
+				};                                               \
+                                                                 \
+				static constexpr                                 \
+					simple_span<name_info> span{enum_names};     \
+				return span;                                     \
+			}                                                    \
+		};                                                       \
+                                                                 \
+		template <>                                              \
+		struct enum_traits<STORAGE>                              \
+			: enum_traits_base<STORAGE, names_helper<STORAGE>> { \
+			using parent = enum_traits_base<STORAGE,             \
+			                   names_helper<STORAGE>>;           \
+			using name_info = typename parent::name_info;        \
+		};                                                       \
 	}
 	// clang-format on
 
@@ -291,6 +313,7 @@ namespace args {
 		protected:
 			template <typename... Names>
 			action_base(Names&&... argnames) {
+				names_.reserve(sizeof...(argnames));
 				pack(names_, std::forward<Names>(argnames)...);
 			}
 

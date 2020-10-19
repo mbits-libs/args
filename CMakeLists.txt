@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 project(args
-  VERSION 0.12.2
+  VERSION 0.12.3
   DESCRIPTION ""
   LANGUAGES CXX)
 

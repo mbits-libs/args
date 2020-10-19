@@ -27,10 +27,6 @@ namespace args {
 		unsigned major = @PROJECT_VERSION_MAJOR@;
 		unsigned minor = @PROJECT_VERSION_MINOR@;
 		unsigned patch = @PROJECT_VERSION_PATCH@;
-
-#ifdef __cpp_impl_three_way_comparison
-        constexpr auto operator<=>(version_t const&) const noexcept = default;
-#endif
 	};
     inline constexpr version_t version{};
 }  // namespace args

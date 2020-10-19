@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <args/api.hpp>
 #include <optional>
 #include <string>

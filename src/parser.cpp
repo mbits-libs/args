@@ -2,6 +2,7 @@
 // This code is licensed under MIT license (see LICENSE for details)
 
 #include <args/parser.hpp>
+#include <args/sys.hpp>
 
 #include <cstring>
 #include <fstream>
@@ -206,7 +207,7 @@ void args::parser::help(std::optional<size_t> maybe_width) const {
 
 	printer{stdout}.format_list(printer_arguments(), maybe_width);
 
-	std::exit(0);
+	args::exit(0);
 }
 
 void args::parser::error(std::string const& msg,
@@ -214,7 +215,7 @@ void args::parser::error(std::string const& msg,
 	short_help(stderr, true, maybe_width);
 	printer{stderr}.format_paragraph(_(lng::error_msg, prog_, msg), 0,
 	                                 maybe_width);
-	std::exit(2);
+	args::exit(2);
 }
 
 void args::parser::program(std::string const& value) {

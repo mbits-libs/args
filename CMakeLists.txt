@@ -107,11 +107,13 @@ add_library(args
   src/actions.cpp
   src/parser.cpp
   src/printer.cpp
+  src/sys.cpp
   src/translator.cpp
   include/args/actions.hpp
   include/args/api.hpp
   include/args/parser.hpp
   include/args/printer.hpp
+  include/args/sys.hpp
   include/args/translator.hpp
   "${CMAKE_CURRENT_BINARY_DIR}/include/args/version.hpp"
   )
